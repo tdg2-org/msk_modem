@@ -1,0 +1,10 @@
+# git is case sensitive by default
+
+**vivado*.log
+**vivado*.jou
+**vivado*.str
+
+# everthing in sim except do/tcl
+/sim/*
+!/sim/*.do 
+!/sim/*.tcl 
