@@ -1,5 +1,5 @@
 module msk_mod #(
-    parameter real FS = 800.0e6,  // Sample rate (Hz)
+    parameter real FS = 200.0e6,  // Sample rate (Hz)
     parameter real F_SYM = 10.0e6 // Symbol rate (Hz)
 )(
     input   logic clk,

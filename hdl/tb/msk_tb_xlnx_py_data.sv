@@ -1,9 +1,8 @@
 
-// generate data here, modulate it, 
-// add distortions/noise/nonlinearities with 'mdl' models to signal
-// feed signal straight to RX path demod
+// data generated in pythone and read into RX path
 
-module msk_tb;
+
+module msk_tb_py_data;
 
     // Clock and reset
     logic clk=0;
@@ -17,7 +16,7 @@ module msk_tb;
     logic signed [15:0] i_cfo, q_cfo, i_jitter, q_jitter, i_faded, q_faded, i_nldist, q_nldist;
     logic signed [15:0] i_fir, q_fir;
     // Real-valued IF signal
-    logic signed [15:0] dac_data;
+    logic signed [15:0] dac_data, adc_data;
 
     // Clock generation (200 MHz)
     always #2.5ns clk = ~clk; // 5 ns period (200 MHz)
@@ -113,7 +112,7 @@ module msk_tb;
       .clk      (clk      ),
       .reset    (~reset_n ),
       //DDC
-      .adc_in   (dac_awgn ), // from ADC
+      .adc_in   (adc_data),//dac_awgn ), // from ADC
       .I_out    (dc_I     ), // to demod
       .Q_out    (dc_Q     ), // to demod
       //DUC
@@ -174,8 +173,8 @@ module msk_tb;
         .reset(~reset_n),
         .I_in(i_fir),
         .Q_in(q_fir),
-        .error(ted_error),
-        .symbol_valid()
+        .error(ted_error),//out
+        .symbol_valid()//out
     );
 
     loop_filter_mdl #(
@@ -185,7 +184,7 @@ module msk_tb;
         .clk(clk),
         .reset(~reset_n),
         .error(ted_error),
-        .control_signal()
+        .control_signal()//out
     );
 
 
@@ -195,8 +194,8 @@ module msk_tb;
         .clk(clk),
         .reset_n(reset_n),
         .midpoint_adj(1),
-        .i_in(i_out),   //(i_fir),
-        .q_in(q_out),   //(q_fir),
+        .i_in(i_fir),
+        .q_in(q_fir),
         .data_out(demod_data)
     );
 
@@ -208,14 +207,6 @@ module msk_tb;
                                       0, 8'hff, 8'hff, 8'hff, 8'hff, 8'h1a, 8'h01, 0,
                                       0, 0, 0, 0, 0, 0, 0, 0,
                                       0, 0, 0, 0, 0, 0, 0, 0};
-//    logic [7:0] test_vector[0:31] = '{8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA, 
-//                                      8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA,
-//                                      8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA,
-//                                      8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA, 8'hAA};
-//    logic [7:0] test_vector[0:31] = '{8'hAA, 8'h55, 8'hFF, 8'h00, 8'hCC, 8'h33, 8'h0F, 8'hF0, 
-//                                      8'hA5, 8'h5A, 8'h3C, 8'hC3, 8'h78, 8'h87, 8'hE1, 8'h1E,
-//                                      8'h92, 8'h6D, 8'h4B, 8'hB4, 8'hF7, 8'h08, 8'hD3, 8'h2C,
-//                                      8'h19, 8'hE6, 8'hAC, 8'h53, 8'h07, 8'hF8, 8'hB9, 8'h46};
 
 logic rdy,data_in_val;
 
@@ -253,6 +244,20 @@ initial begin
   repeat (100) @(posedge clk);
 
 end
+
+
+file_read_simple #(
+  .DATA_WIDTH(16),
+  .CLKLESS(0),
+  .PERIOD_NS(),
+  .DATA_FORMAT("dec"),
+  .FILE_NAME("/mnt/TDG_512/projects/2_zub_msk_udp_dma/sub/common/hdl/tb/adc_samples.txt")
+) file_read0 (
+  .clk(clk),
+  .data_out(adc_data),
+  .data_val()
+);
+
 
 
 endmodule

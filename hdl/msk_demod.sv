@@ -1,5 +1,5 @@
 module msk_demod #(
-    parameter real FS = 800.0e6,  // Sample rate (Hz)
+    parameter real FS = 200.0e6,  // Sample rate (Hz)
     parameter real F_SYM = 10.0e6 // Symbol rate (Hz)
 )(
     input logic clk,
@@ -76,9 +76,24 @@ module msk_demod #(
     .P    (mult_QxIP      )
   );
 
+// dsp has 3 CLK/CE delay to output
+  logic mult_val, mult_val_stb, mult_ce_sr;
+  logic [3:0] mult_val_sr;
+  always_ff @(posedge clk) begin
+    mult_ce_sr <= midpoint_active;
+    if (~reset_n) mult_val_sr <= 0;
+    else if (midpoint_active) mult_val_sr <= {mult_val_sr[2:0],midpoint_active};
+  end
+
+  assign mult_val_stb = (mult_val && mult_ce_sr && !midpoint_active);// dsp mult output valid this clock cycle
+  assign mult_val = mult_val_sr[3];
+
+
   assign imag_diff = mult_QxIP - mult_IxQP;
 
   assign data_out = (imag_diff >= 0) ? 1:0;
 
+  logic data_out_valid;
+  assign data_out_valid = mult_val_stb;
 
 endmodule
