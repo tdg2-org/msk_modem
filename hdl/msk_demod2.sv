@@ -1,13 +1,13 @@
 
-// runs at oversampled rate, choice for symbol sample point
+// runs at symbol rate, not sample rate
 
-module msk_demod #(
+module msk_demod2 #(
     parameter real FS = 200.0e6,  // Sample rate (Hz)
     parameter real F_SYM = 10.0e6 // Symbol rate (Hz)
 )(
     input logic clk,
     input logic reset_n,
-    input int   midpoint_adj,
+    input logic sym_val_i,
     input logic signed [15:0] i_in,  // In-phase (I) input from if_to_iq
     input logic signed [15:0] q_in,  // Quadrature (Q) input from if_to_iq
     input logic               iq_val,
@@ -20,37 +20,17 @@ module msk_demod #(
 // Registers to store the previous I and Q samples.
   logic signed [15:0] I_prev;
   logic signed [15:0] Q_prev;
-  logic midpoint_active;
+
 
   always_ff @(posedge clk) begin
     if (~reset_n) begin
       I_prev   <= '0;
       Q_prev   <= '0;
-    end else if (midpoint_active) begin
+    end else if (sym_val_i) begin
       I_prev <= i_in;
       Q_prev <= q_in;
     end
   end
-
-  integer sample_cnt, midpoint;
-  assign midpoint = SAMPLE_MIDPOINT + midpoint_adj;
-
-  always_ff @(posedge clk) begin
-    if (~reset_n) begin
-      sample_cnt <= 0;
-      midpoint_active <= 0;
-    end else if (iq_val) begin 
-      midpoint_active <= 0;
-      sample_cnt <= sample_cnt + 1;
-      if (sample_cnt == 19) begin 
-        sample_cnt <= 0;
-      end
-      if (sample_cnt == midpoint) begin 
-        //sample_cnt <= 0;
-        midpoint_active <= 1;
-      end 
-    end 
-  end 
 
 
   logic signed [17:0] dsp_i_in,dsp_q_in,dsp_ip_in,dsp_qp_in;
@@ -66,7 +46,7 @@ module msk_demod #(
   // A*B-C
   dsp_macro_AxBmC IxQP (
     .CLK  (clk        ),// input wire CLK
-    .CE   (midpoint_active     ),
+    .CE   (sym_val_i  ),
     .A    (dsp_i_in   ),// input wire [17 : 0] A
     .B    (dsp_qp_in  ),// input wire [17 : 0] B
     .C    ('0         ),// input wire [47 : 0] C
@@ -75,7 +55,7 @@ module msk_demod #(
 
   dsp_macro_AxBmC QxIP (
     .CLK  (clk        ),
-    .CE   (midpoint_active     ),
+    .CE   (sym_val_i  ),
     .A    (dsp_q_in   ),
     .B    (dsp_ip_in  ),
     .C    ('0         ),
@@ -86,12 +66,12 @@ module msk_demod #(
   logic mult_val, mult_val_stb, mult_ce_sr;
   logic [3:0] mult_val_sr;
   always_ff @(posedge clk) begin
-    mult_ce_sr <= midpoint_active;
+    mult_ce_sr <= sym_val_i;
     if (~reset_n) mult_val_sr <= 0;
-    else if (midpoint_active) mult_val_sr <= {mult_val_sr[2:0],midpoint_active};
+    else if (sym_val_i) mult_val_sr <= {mult_val_sr[2:0],sym_val_i};
   end
 
-  assign mult_val_stb = (mult_val && mult_ce_sr && !midpoint_active);// dsp mult output valid this clock cycle
+  assign mult_val_stb = (mult_val && mult_ce_sr && !sym_val_i);// dsp mult output valid this clock cycle
   assign mult_val = mult_val_sr[3];
 
 

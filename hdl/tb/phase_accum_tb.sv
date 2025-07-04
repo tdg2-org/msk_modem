@@ -8,9 +8,12 @@ module msk_tb_py_data_RX;
   logic clk=0;
   logic reset_n;
 
+  // Binary data input
+  logic demod_data;
+
   // I/Q signals
-  logic signed [15:0] i_fir, i_fir1, i_raw_delay;
-  logic signed [15:0] q_fir, q_fir1, q_raw_delay;
+  logic signed [15:0] i_fir, i_fir1;
+  logic signed [15:0] q_fir, q_fir1;
   // Real-valued IF signal
   logic signed [15:0] adc0, adc1;
 
@@ -25,23 +28,29 @@ module msk_tb_py_data_RX;
     #20 reset_n = 1;
 
   end
-  logic rst = !reset_n;
 
 //-------------------------------------------------------------------------------------------------
 // adc_0, adc_Tp30, adc_Tp10, adc_Tp05, adc_Tp40, adc_Tp49
 // adc_Tp30_C40_Jp01
-// adc_long
 //-------------------------------------------------------------------------------------------------
 
   file_read_simple #(
     .DATA_WIDTH(16),.CLKLESS(0),.PERIOD_NS(),.DATA_FORMAT("dec"),.FILE_DIR("sub/common/hdl/tb/data/"),
-    .FILE_NAME("adc_long.dat")
+    .FILE_NAME("adc_2.dat")
   ) file_read_simple_inst0 (
     .rst(~reset_n),.clk(clk),
     .data_out(adc0),
     .data_val(adc0_val)
   );
 
+//  file_read_simple #(
+//    .DATA_WIDTH(16),.CLKLESS(0),.PERIOD_NS(),.DATA_FORMAT("dec"),.FILE_DIR("sub/common/hdl/tb/data/"),
+//    .FILE_NAME("adc_Tp10.dat") 
+//  ) file_read_simple_inst1 (
+//    .rst(~reset_n),.clk(clk),
+//    .data_out(adc1),
+//    .data_val(adc1_val)
+//  );
 
 //-------------------------------------------------------------------------------------------------
 //
@@ -67,6 +76,20 @@ module msk_tb_py_data_RX;
     .dac_out  ()  // to DAC
   );
 
+//  duc_ddc_lpf_top #(
+//    .FS(200e6)
+//  ) duc_ddc_top_inst1 (
+//    .clk      (clk      ),
+//    .rstn     (reset_n ),
+//    //DDC
+//    .adc_in   (adc1),//dac_awgn ), // from ADC
+//    .I_out    (  ), // to demod
+//    .Q_out    (  ), // to demod
+//    //DUC
+//    .I_in     (), // from modulator
+//    .Q_in     (), // from modulator
+//    .dac_out  ()  // to DAC
+//  );
 
 
   localparam int WIQ    = 16;
@@ -93,12 +116,10 @@ module msk_tb_py_data_RX;
     .iq_val       (iq_val   ),
     .sym_valid_i  (sym_val  ),
     .e_out_o      (ek       ),
-    .e_valid_o    (ek_val   ),
-    .i_raw_delay_o(i_raw_delay),
-    .q_raw_delay_o(q_raw_delay)
+    .e_valid_o    (ek_val   )
   );
 
-/*
+
   pi_loop_filter_mdl_2 #(
     .WERR      (WERR),
     .KP_SHIFT  (7 ),
@@ -109,10 +130,9 @@ module msk_tb_py_data_RX;
     .reset_n    (reset_n      ),
     .e_in_i     (ek           ),
     .e_valid_i  (ek_val       ),
-    .ctrl_o     (  ),
-    .ctrl_val_o (  )
+    .ctrl_o     (lf_ctrl      ),
+    .ctrl_val_o (lf_ctrl_val  )
   );
-*/
 
   pi_loop_filter_mdl_3 #(
     .WERR      (WERR),
@@ -124,8 +144,8 @@ module msk_tb_py_data_RX;
     .reset_n    (reset_n      ),
     .e_in_i     (ek           ),
     .e_valid_i  (ek_val       ),
-    .ctrl_o     (lf_ctrl      ),
-    .ctrl_val_o (lf_ctrl_val  )
+    .ctrl_o     (      ),
+    .ctrl_val_o (  )
   );
 
 
@@ -146,8 +166,44 @@ module msk_tb_py_data_RX;
 
 
 
+  int cnt=0;
+  logic [19:0] sr='0;
+  logic cnt_stb='0, sym_val_dbg;
+
+  always_ff @(posedge clk) begin
+    if (iq_val) begin 
+      cnt_stb <= '0;
+      if (cnt == 19) begin 
+        cnt <= 0;
+        cnt_stb <= '1;
+      end else cnt <= cnt + 1;
+      sr <= {sr[18:0],cnt_stb};
+    end 
+  end
+  int cnt_sel = 11;
+  assign sym_val_dbg =  (cnt_sel == 0)  ? sr[0] :
+                        (cnt_sel == 1)  ? sr[1] :
+                        (cnt_sel == 3)  ? sr[3] :
+                        (cnt_sel == 4)  ? sr[4] :
+                        (cnt_sel == 5)  ? sr[5] :
+                        (cnt_sel == 6)  ? sr[6] :
+                        (cnt_sel == 7)  ? sr[7] :
+                        (cnt_sel == 8)  ? sr[8] :
+                        (cnt_sel == 9)  ? sr[9] :
+                        (cnt_sel == 10) ? sr[10] :
+                        (cnt_sel == 11) ? sr[11] :
+                        (cnt_sel == 12) ? sr[12] :
+                        (cnt_sel == 13) ? sr[13] :
+                        (cnt_sel == 14) ? sr[14] :
+                        (cnt_sel == 15) ? sr[15] :
+                        (cnt_sel == 16) ? sr[16] :
+                        (cnt_sel == 17) ? sr[17] :
+                        (cnt_sel == 18) ? sr[18] :
+                        (cnt_sel == 19) ? sr[19] : '0;
 
 
+
+/*
 //-------------------------------------------------------------------------------------------------
 // debug ted
 //-------------------------------------------------------------------------------------------------
@@ -160,8 +216,8 @@ module msk_tb_py_data_RX;
   ) polyphase_interp_inst (
     .clk          (clk        ),
     .reset_n      (reset_n    ),
-    .i_raw_i      (i_raw_delay),
-    .q_raw_i      (q_raw_delay),
+    .i_raw_i      (i_fir      ),
+    .q_raw_i      (q_fir      ),
     .iq_raw_val_i (iq_val     ), 
     .phase_int_i  (phase_int  ),
     .mu_i         (mu         ),
@@ -171,11 +227,6 @@ module msk_tb_py_data_RX;
     .sym_valid_o  (sym_val_decoder)
   );
 
-  logic slicer_data, slicer_val;
-  logic [11:0] sym_var_sr = '0;
-
-  always_ff @(posedge clk) sym_var_sr <= {sym_var_sr[10:0],sym_val_decoder};
-  
 
   msk_slicer_dec_mdl #(
     .IW (18)
@@ -185,118 +236,40 @@ module msk_tb_py_data_RX;
     .i_sym_i      (i_sym    ),
     .q_sym_i      (q_sym    ),
     .sym_valid_i  (sym_val_decoder),
-    .data_o       (slicer_data),
-    .data_valid_o (slicer_val)
-  );
-
-  localparam shifterWid = 128;
-
-  shifter_viewer # (
-    .WIDTH(shifterWid)
-  ) shifter_viewer_inst (
-    .clk        (clk),
-    .rst        (!reset_n),
-    .data_i     (slicer_data),
-    .data_val_i (slicer_val)
+    .data_o       (),
+    .data_valid_o ()
   );
 
 
 
 //-------------------------------------------------------------------------------------------------
-// OVERSAMP old demod works
-// bypass loop
+// old demod works
 //-------------------------------------------------------------------------------------------------
 
   msk_demod #(
       .FS(200.0e6)
-  ) msk_demod_OVERSAMP (
+  ) msk_demod_inst (
       .clk(clk),
       .reset_n(reset_n),
       .midpoint_adj(1),
-      .i_in(i_fir), // bypass loop
+      .i_in(i_fir),
       .q_in(q_fir),
-      .iq_val(iq_val),
-      .data_out(data_OVERSAMP),
-      .data_val(data_val_OVERSAMP)
+      .data_out()
   );
-
-  shifter_viewer # (
-    .WIDTH(shifterWid)
-  ) shifter_viewer_OVERSAMP (
-    .clk        (clk),
-    .rst        (!reset_n),
-    .data_i     (data_OVERSAMP),
-    .data_val_i (data_val_OVERSAMP)
-  );
-
-
-
-//-------------------------------------------------------------------------------------------------
-// fixed sym val
-// bypass loop
-//-------------------------------------------------------------------------------------------------
-
-  variable_strobe # (.PTR(11)) 
-  variable_strobe_FIXED_SYM_VALID (
-    .clk(clk),.rst(rst),
-    .en_i(iq_val),
-    .stb_o(sym_val_dbg));
-
-  msk_demod2 #(
+*/
+  msk_demod #(
       .FS(200.0e6)
-  ) msk_demod2_FIXED_SYM_VALID (
+  ) msk_demod_inst2 (
       .clk(clk),
       .reset_n(reset_n),
-      .sym_val_i(sym_val_dbg),
-      .i_in(i_fir), // bypass loop
+      .midpoint_adj(1),
+      .i_in(i_fir),
       .q_in(q_fir),
-      .data_out(data_FIXED_SYM_VALID),
-      .data_val(data_val_FIXED_SYM_VALID)
-  );
-
-  shifter_viewer # (
-    .WIDTH(shifterWid)
-  ) shifter_viewer_FIXED_SYM_VALID (
-    .clk        (clk),
-    .rst        (!reset_n),
-    .data_i     (data_FIXED_SYM_VALID),
-    .data_val_i (data_val_FIXED_SYM_VALID)
+      .iq_val(iq_val),
+      .data_out(demod_data)
   );
 
 
-//-------------------------------------------------------------------------------------------------
-// fixed sym val
-// loop from INTERP_FIXED 
-//-------------------------------------------------------------------------------------------------
-
-  variable_strobe # (.PTR(11)) 
-  variable_strobe_INTERP_FIXED(
-    .clk(clk),.rst(rst),
-    .en_i(iq_val),
-    .stb_o(sym_val_INTERP_FIXED));
-
-
-  msk_slicer_dec_mdl #(
-    .IW (18)
-  ) msk_slicer_dec_INTERP_FIXED (
-    .clk          (clk      ),
-    .reset_n      (reset_n  ),
-    .i_sym_i      (i_sym    ),
-    .q_sym_i      (q_sym    ),
-    .sym_valid_i  (sym_val_INTERP_FIXED),
-    .data_o       (data_INTERP_FIXED),
-    .data_valid_o (dval_INTERP_FIXED)
-  );
-
-
-  shifter_viewer # (
-    .WIDTH(shifterWid)
-  ) shifter_viewer_INTERP_FIXED(
-    .clk        (clk),
-    .rst        (rst),
-    .data_i     (data_INTERP_FIXED),
-    .data_val_i (dval_INTERP_FIXED)
-  );
 
 
 

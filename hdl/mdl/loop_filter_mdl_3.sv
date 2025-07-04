@@ -4,7 +4,7 @@
 //   • Fixed-point gains implemented as right shifts
 //   • ctrl_o drives the phase-accumulator (same 18-bit scale as Gardner e_out_o)
 // -----------------------------------------------------------------------------
-module pi_loop_filter_mdl_2 #
+module pi_loop_filter_mdl_3 #
 (
   parameter int WERR        = 18,  // width of e_in_i and ctrl_o
   parameter int KP_SHIFT    = 7,   // Kp = 2^-KP_SHIFT
@@ -20,63 +20,47 @@ module pi_loop_filter_mdl_2 #
   output logic                    ctrl_val_o
 );
 
-  logic signed [WERR-1:0] ctrl;
+  logic signed [WERR-1:0] ctrl=0;
+  logic signed [ACC_WIDTH-1:0] acc=0;
+  logic signed [WERR-1:0] u_prop1=0,u_prop2=0,u_prop=0,u_pre,u_prop4;          // proportional term
 
-  // ---------------------------------------------------------------------------
-  // 1. integrator register
-  // ---------------------------------------------------------------------------
-  logic signed [ACC_WIDTH-1:0] acc;
-
-  // ---------------------------------------------------------------------------
-  // 2. proportional + integral update on each e_valid_i pulse
-  // ---------------------------------------------------------------------------
-  logic signed [WERR-1:0] u;          // proportional term
-  logic signed [ACC_WIDTH-1:0] acc_next;
-  logic signed [WERR-1:0] ki_term;
   logic ctrl_val;
 
+  assign u_pre =    ((e_in_i > 0) && (e_in_i > 127)) ? e_in_i[WERR-1:KP_SHIFT] : 
+                    ((e_in_i > 0) && (e_in_i < 128)) ? '0 :
+                    ((e_in_i < 0) && (e_in_i < -128)) ? {{KP_SHIFT{e_in_i[WERR-1]}},e_in_i[WERR-1:KP_SHIFT]} :
+                    ((e_in_i < 0) && (e_in_i > -127)) ? '0 : '0;
+
+
+
+  //assign u_prop = (e_in_i >>> KP_SHIFT);
+  //assign acc    = (acc + (e_in_i >>> KI_SHIFT));
+  //assign ctrl   = (u_prop + acc);
+
+  /* NOTE: be careful with shift operation and signed values:
+    (-1) >>> 1 = -1;
+    (+1) >>> 1 = 0;
+    *Depending on how it's used, could be a problem, for example in an integrator... */
+
   always_ff @(posedge clk) begin
-    if (!reset_n) begin
-      acc       <= '0;
-      ctrl      <= '0;
-      u         <= '0;
-      ctrl_val  <= '0;
-    end else if (e_valid_i) begin
-      // proportional term   u = e / 2^KP_SHIFT
-      u = e_in_i >>> KP_SHIFT;
-
-      // integrator update   acc += e / 2^KI_SHIFT
-      /*acc_next = acc + (e_in_i >>> KI_SHIFT);*/
-      
-      // replace above line
-      // rounding right shift   (adds 0.5 LSB before >>>)
-      
-      ki_term   = (e_in_i + (e_in_i[WERR-1] ? -1 : 1) << (KI_SHIFT-1)) >>> KI_SHIFT;
-      acc_next  = acc + ki_term;
-
-
-      // optional anti-wind-up clamp
-      if (acc_next >  ($signed({1'b0, {(ACC_WIDTH-1){1'b1}}})))  // +max
-        acc <=  $signed({1'b0, {(ACC_WIDTH-1){1'b1}}});
-      else if (acc_next < ($signed({1'b1, {(ACC_WIDTH-1){1'b0}}}))) // -max
-        acc <=  $signed({1'b1, {(ACC_WIDTH-1){1'b0}}});
-      else
-        acc <= acc_next;
-
-      // sum → ctrl
-      //ctrl <= acc[WERR-1:0] + u;
-      ctrl <= acc_next[WERR-1:0] + u;   // use just-computed value
-      //ctrl_val <= '1;
+    if (!reset_n) begin 
+      ctrl_val <= '0;
+    end else begin 
+      if (e_valid_i) begin
+        u_prop  <= u_pre;
+        acc     <= acc + u_pre;
+        ctrl    <= u_prop + acc;
+      end
+      if (e_valid_i) ctrl_val <= '1;
+      else ctrl_val <= '0;
     end
-    if (e_valid_i) ctrl_val <= '1;
-    else ctrl_val <= '0;
-
   end
 
   assign ctrl_o     = ctrl;
   assign ctrl_val_o = ctrl_val;
 
-
+        //u_prop1 <= (e_in_i >>> KP_SHIFT);
+        //u_prop2 <= (e_in_i + (e_in_i[WERR-1] ? -1 : 1) << (KP_SHIFT-1)) >>> KP_SHIFT;
 
 //-------------------------------------------------------------------------------------------------
 // debug - 1000 sample average of e_in_i
@@ -121,3 +105,5 @@ pi_loop_filter_mdl_2 #(
 );
 
 */
+
+

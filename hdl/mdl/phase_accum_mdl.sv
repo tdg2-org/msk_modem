@@ -12,13 +12,13 @@ module phase_accum_mdl #
   parameter int FRAC_W     = 27
 )
 (
-  input  logic                       clk,
-  input  logic                       reset_n,
-  input  logic signed [CTRL_W-1:0]   ctrl_i,        // timing correction
-
-  output logic                       sym_valid_o,   // 1-cycle pulse / symbol
-  output logic [INT_W-1:0]           phase_int_o,   // 0 … 19
-  output logic [FRAC_W-1:0]          mu_o           // Q0.27
+  input   logic                     clk,
+  input   logic                     reset_n,
+  input   logic signed [CTRL_W-1:0] ctrl_i,        // timing correction
+  input   logic                     ctrl_val_i,
+  output  logic                     sym_valid_o,   // 1-cycle pulse / symbol
+  output  logic [INT_W-1:0]         phase_int_o,   // 0 … 19
+  output  logic [FRAC_W-1:0]        mu_o           // Q0.27
 );
 
   // ---------------- constants & types ----------------------------------------
@@ -29,18 +29,16 @@ module phase_accum_mdl #
   // ---------------- registers -------------------------------------------------
   logic [PHASE_W-1:0] phi;          // phase pointer (Q5.27)
 
-
+  logic signed [PHASE_W:0] ctrl_ext;
+  logic [PHASE_W:0] phi_next;
+  logic wrap;
 
   always_ff @(posedge clk) begin
     if (!reset_n) begin
       phi         <= '0;
       sym_valid_o <= 1'b0;
-    end
-    else begin
+    end else begin
       // 1) accumulate one sample + fractional correction
-      logic signed [PHASE_W:0] ctrl_ext;
-      logic [PHASE_W:0] phi_next;
-      logic wrap;
 
       ctrl_ext = {{(PHASE_W-CTRL_W+1){ctrl_i[CTRL_W-1]}}, ctrl_i} << SHIFT_CTRL;
 
@@ -57,11 +55,31 @@ module phase_accum_mdl #
 
       // 4) one-clock symbol strobe
       sym_valid_o <= wrap;
+
     end
   end
 
   assign phase_int_o = phi[PHASE_W-1:FRAC_W];   // coarse 0…19
   assign mu_o        = phi[FRAC_W-1:0];         // fractional part (Q0.27)
+
+
+
+//-------------------------------------------------------------------------------------------------
+// debug
+//-------------------------------------------------------------------------------------------------
+  int cnt = 0;
+  logic inc,dec,nom;
+  always_ff @(posedge clk) begin
+    inc <= '0; dec <= '0; nom <= '0;
+    
+    if (wrap) cnt <= 0;
+    else cnt <= cnt + 1;
+
+    if      (wrap && (cnt < 19))  dec <= '1;
+    else if (wrap && (cnt > 19))  inc <= '1;
+    else if (wrap) nom <= '1;
+
+  end
 
 endmodule
 

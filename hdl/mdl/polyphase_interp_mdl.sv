@@ -20,24 +20,24 @@ module polyphase_interp_mdl #
   parameter int WO         = 18   // output sample width
 )
 (
-  input  logic                       clk,
-  input  logic                       reset_n,
+  input  logic                  clk,
+  input  logic                  reset_n,
 
   // oversampled I/Q stream (200 MHz)
-  input  logic signed [WIQ-1:0]      i_raw_i,
-  input  logic signed [WIQ-1:0]      q_raw_i,
-
+  input  logic signed [WIQ-1:0] i_raw_i,
+  input  logic signed [WIQ-1:0] q_raw_i,
+  input  logic                  iq_raw_val_i,       
   // phase info from phase-accumulator
-  input  logic [4:0]                 phase_int_i,    // 0…19
-  input  logic [26:0]                mu_i,           // not used here
+  input  logic [4:0]            phase_int_i,    // 0…19
+  input  logic [26:0]           mu_i,           // not used here
 
   // one-per-symbol enable
-  input  logic                       sym_valid_i,
+  input  logic                  sym_valid_i,
 
   // interpolated symbol output
-  output logic signed [WO-1:0]       i_sym_o,
-  output logic signed [WO-1:0]       q_sym_o,
-  output logic                       sym_valid_o
+  output logic signed [WO-1:0]  i_sym_o,
+  output logic signed [WO-1:0]  q_sym_o,
+  output logic                  sym_valid_o
 );
 
   // ---------------------------------------------------------------------------
@@ -50,10 +50,17 @@ module polyphase_interp_mdl #
   sample_t qdelay [DEPTH];
   int      wr_ptr;
 
+  logic [DEPTH-1:0] sr;
+  logic array_full;
+
   always_ff @(posedge clk) begin
     if (!reset_n) begin
-      wr_ptr <= 0;
-    end else begin
+      wr_ptr      <= 0;
+      sr          <= '0;
+      array_full  <= '0;
+    end else if (iq_raw_val_i) begin
+      sr <= {sr[DEPTH-2:0],1'b1};
+      if (sr == '1) array_full <= '1;
       idelay[wr_ptr] <= i_raw_i;
       qdelay[wr_ptr] <= q_raw_i;
       wr_ptr         <= (wr_ptr == DEPTH-1) ? 0 : wr_ptr + 1;
@@ -104,9 +111,11 @@ module polyphase_interp_mdl #
   localparam int PROD_W = WIQ + 16;              // 32 bits
   logic signed [PROD_W-1:0] acc_i, acc_q;
 
+  logic sym_val;
+
   always_ff @(posedge clk) begin
-    sym_valid_o <= 1'b0;
-    if (sym_valid_i) begin
+    sym_val <= 1'b0;
+    if (sym_valid_i && array_full) begin
       acc_i = '0;
       acc_q = '0;
       for (int k = 0; k < TAPS_PPH; k++) begin
@@ -117,9 +126,21 @@ module polyphase_interp_mdl #
       // truncate / round to WO bits (here simple shift)
       i_sym_o     <= acc_i >>> (PROD_W-WO);
       q_sym_o     <= acc_q >>> (PROD_W-WO);
-      sym_valid_o <= 1'b1;
+      sym_val     <= 1'b1;
     end
   end
+
+  assign sym_valid_o = sym_val;
+
+
+// dbg 
+
+//  logic [19:0] sym_val_sr = '0;
+//  always_ff @(posedge clk) sym_val_sr <= {sym_val_sr[18:0],sym_val};
+//
+//  int shiftPtr = 7;
+//  assign sym_valid_o = sym_val_sr[shiftPtr];
+
 
 endmodule
 
