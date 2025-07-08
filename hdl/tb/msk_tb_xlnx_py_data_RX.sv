@@ -25,7 +25,8 @@ module msk_tb_py_data_RX;
     #20 reset_n = 1;
 
   end
-  logic rst = !reset_n;
+  logic rst;
+  assign rst = !reset_n;
 
 //-------------------------------------------------------------------------------------------------
 // adc_0, adc_Tp30, adc_Tp10, adc_Tp05, adc_Tp40, adc_Tp49
@@ -46,6 +47,20 @@ module msk_tb_py_data_RX;
 //-------------------------------------------------------------------------------------------------
 //
 //-------------------------------------------------------------------------------------------------
+
+  ddc_lpf_mdl #(
+    .IF(50e6 ),
+    .FS(200e6) 
+  ) ddc_mdl_inst (
+    .clk    (clk),
+    .rst    (rst),
+    .adc_in (adc0),
+    .adc_val(adc0_val),
+    .I_out  (),
+    .Q_out  (),
+    .iq_out_val()
+  );
+
 
 
   duc_ddc_lpf_top #(
@@ -203,7 +218,7 @@ module msk_tb_py_data_RX;
 
 
 //-------------------------------------------------------------------------------------------------
-// OVERSAMP old demod works
+// OVERSAMP BYPASS old demod works
 // bypass loop
 //-------------------------------------------------------------------------------------------------
 
@@ -229,6 +244,31 @@ module msk_tb_py_data_RX;
     .data_val_i (data_val_OVERSAMP)
   );
 
+  msk_demod_mdl #(
+    .FS     (200.0e6),  
+    .F_SYM  (10.0e6 )   
+  )msk_demod_MDL(
+    .clk          (clk),
+    .reset_n      (reset_n),
+    .midpoint_adj (1),
+    .i_in         (i_fir),
+    .q_in         (q_fir),
+    .iq_val       (iq_val),
+    .data_out     (data_MDL),
+    .data_val     (data_val_MDL)
+  );
+
+
+  shifter_viewer # (
+    .WIDTH(shifterWid)
+  ) shifter_viewer_MDL (
+    .clk        (clk),
+    .rst        (!reset_n),
+    .data_i     (data_MDL),
+    .data_val_i (data_val_MDL)
+  );
+
+//  9010_0000_0033_0000_00FF_FFFF_FF01_0000_0077_00ff_ff00_0000_0101_0000_ffa5_0ffe
 
 
 //-------------------------------------------------------------------------------------------------
@@ -298,6 +338,40 @@ module msk_tb_py_data_RX;
     .data_val_i (dval_INTERP_FIXED)
   );
 
+//-------------------------------------------------------------------------------------------------
+// fixed sym val
+// bypass loop, try slicer
+// BYPASS_FIXED_SLICER
+//-------------------------------------------------------------------------------------------------
+
+  variable_strobe # (.PTR(11)) 
+  variable_strobe_BYPASS_FIXED_SLICER(
+    .clk(clk),.rst(rst),
+    .en_i(iq_val),
+    .stb_o(sym_val_BYPASS_FIXED_SLICER));
+
+
+  msk_slicer_dec_mdl #(
+    .IW (16)
+  ) msk_slicer_dec_BYPASS_FIXED_SLICER (
+    .clk          (clk      ),
+    .reset_n      (reset_n  ),
+    .i_sym_i      (i_fir    ),
+    .q_sym_i      (q_fir    ),
+    .sym_valid_i  (sym_val_BYPASS_FIXED_SLICER),
+    .data_o       (data_BYPASS_FIXED_SLICER),
+    .data_valid_o (dval_BYPASS_FIXED_SLICER)
+  );
+
+
+  shifter_viewer # (
+    .WIDTH(shifterWid)
+  ) shifter_viewer_BYPASS_FIXED_SLICER(
+    .clk        (clk),
+    .rst        (rst),
+    .data_i     (data_BYPASS_FIXED_SLICER),
+    .data_val_i (dval_BYPASS_FIXED_SLICER)
+  );
 
 
 endmodule

@@ -89,7 +89,7 @@ generate if (DDC_EN) begin : DDC
     .m_axis_data_tdata  (fir_Q_tdata)// output wire [31 : 0] m_axis_data_tdata
   );
 
-  assign I_out  = fir_I_tdata[30:15];
+  assign I_out  = fir_I_tdata[30:15]; // CAREFUL TO PRESERVE SIGN BIT!!!
   assign Q_out  = fir_Q_tdata[30:15];
   assign IQ_val = fir_val;
 

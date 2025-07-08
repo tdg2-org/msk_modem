@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps  // <time_unit>/<time_precision>
+
 // -----------------------------------------------------------------------------
 // Polyphase fractional-delay interpolator (non-synthesizable model)
 //   • OSF       : 20 samples / symbol   (fixed phase-bank count)
@@ -21,125 +23,79 @@ module polyphase_interp_mdl #
 )
 (
   input  logic                  clk,
-  input  logic                  reset_n,
-
-  // oversampled I/Q stream (200 MHz)
+  input  logic                  rst,
   input  logic signed [WIQ-1:0] i_raw_i,
   input  logic signed [WIQ-1:0] q_raw_i,
   input  logic                  iq_raw_val_i,       
-  // phase info from phase-accumulator
   input  logic [4:0]            phase_int_i,    // 0…19
   input  logic [26:0]           mu_i,           // not used here
-
-  // one-per-symbol enable
   input  logic                  sym_valid_i,
-
-  // interpolated symbol output
   output logic signed [WO-1:0]  i_sym_o,
   output logic signed [WO-1:0]  q_sym_o,
   output logic                  sym_valid_o
 );
-
-  // ---------------------------------------------------------------------------
-  // 1. delay-line : store (OSF + (TAPS_PPH-1)*OSF) samples  (here 100 max)
-  // ---------------------------------------------------------------------------
-  localparam int DEPTH = OSF * TAPS_PPH;    // 100
-  typedef logic signed [WIQ-1:0] sample_t;
-
-  sample_t idelay [DEPTH];
-  sample_t qdelay [DEPTH];
-  int      wr_ptr;
-
-  logic [DEPTH-1:0] sr;
-  logic array_full;
+//-------------------------------------------------------------------------------------------------
+// 5taps * 20samples/symbol = 100 deep delay
+//-------------------------------------------------------------------------------------------------
+  localparam DEPTH = OSF * TAPS_PPH;
+  logic signed [WIQ-1:0] idelay [DEPTH-1:0] = '{default:'0};
+  logic signed [WIQ-1:0] qdelay [DEPTH-1:0] = '{default:'0};
 
   always_ff @(posedge clk) begin
-    if (!reset_n) begin
-      wr_ptr      <= 0;
-      sr          <= '0;
-      array_full  <= '0;
-    end else if (iq_raw_val_i) begin
-      sr <= {sr[DEPTH-2:0],1'b1};
-      if (sr == '1) array_full <= '1;
-      idelay[wr_ptr] <= i_raw_i;
-      qdelay[wr_ptr] <= q_raw_i;
-      wr_ptr         <= (wr_ptr == DEPTH-1) ? 0 : wr_ptr + 1;
+    if (iq_raw_val_i) begin 
+      idelay <= {idelay[DEPTH-2:0],i_raw_i};
+      qdelay <= {qdelay[DEPTH-2:0],q_raw_i};
     end
   end
 
-  // helper: wrapped read (current pointer minus offset)
-  function automatic sample_t rd_i (input int off);
-    int idx;
-    begin
-      idx = wr_ptr - off;
-      if (idx < 0)       idx += DEPTH;
-      else if (idx >= DEPTH) idx -= DEPTH;
-      return idelay[idx];
-    end
-  endfunction
 
-  function automatic sample_t rd_q (input int off);
-    int idx;
-    begin
-      idx = wr_ptr - off;
-      if (idx < 0)       idx += DEPTH;
-      else if (idx >= DEPTH) idx -= DEPTH;
-      return qdelay[idx];
-    end
-  endfunction
+//-------------------------------------------------------------------------------------------------
+// 5-tap per phase branch, in this scenario without pulse-shaping each tap for the phase branch is 
+// identical. this will change when doing pulse-shaping, and will then have to be 20xN taps, where
+// N=5 or the new number of taps for the design
+//-------------------------------------------------------------------------------------------------
+  //localparam signed [15:0] coeffs [OSF-1:0][TAPS_PPH-1:0] = { // for future when doing pulse-shaping at TX side
+  localparam signed [15:0] coeffs [OSF-1:0] = {
+    16'sd2571, 16'sd7649, 16'sd12567, 16'sd17133, 16'sd21283, 16'sd24954, 16'sd28080, 16'sd30272, 16'sd31480, 16'sd31988,
+    16'sd31988, 16'sd31480, 16'sd30272, 16'sd28080, 16'sd24954, 16'sd21283, 16'sd17133, 16'sd12567, 16'sd7649, 16'sd2571};
 
-  // ---------------------------------------------------------------------------
-  // 2. coefficient ROM  (Q1.15 half-sine example; replace as needed)
-  // ---------------------------------------------------------------------------
-  typedef logic signed [15:0] coef_t;
-  coef_t coeff[OSF][TAPS_PPH];
+  logic signed [15:0] coeffs0 [OSF-1:0] =coeffs;//debug view only
 
-  initial begin
-    real half_sine[OSF];
-    for (int p = 0; p < OSF; p++)
-      half_sine[p] = $sin( (p + 0.5) * 3.1415926536 / OSF );   // 0…π
+  logic signed [34:0] acc_i, acc_q, acc_si, acc_sq;
+  logic acc_val;
+  int unsigned off;
 
-    // simple “shifted” version: same taps each branch, scaled half-sine
-    for (int p = 0; p < OSF; p++)
-      for (int t = 0; t < TAPS_PPH; t++)
-        coeff[p][t] = $rtoi( half_sine[p] * 32767.0 / TAPS_PPH );
-  end
-
-  // ---------------------------------------------------------------------------
-  // 3. dot product on sym_valid_i
-  // ---------------------------------------------------------------------------
-  localparam int PROD_W = WIQ + 16;              // 32 bits
-  logic signed [PROD_W-1:0] acc_i, acc_q;
-
-  logic sym_val;
-
-  always_ff @(posedge clk) begin
-    sym_val <= 1'b0;
-    if (sym_valid_i && array_full) begin
-      acc_i = '0;
-      acc_q = '0;
+  always_ff @(posedge clk) begin 
+    if (iq_raw_val_i && sym_valid_i) begin
+      acc_si = '0; // BLOCKING: local running sum
+      acc_sq = '0; // BLOCKING: local running sum
       for (int k = 0; k < TAPS_PPH; k++) begin
-        int off = phase_int_i + k*OSF;
-        acc_i += rd_i(off) * coeff[phase_int_i][k];
-        acc_q += rd_q(off) * coeff[phase_int_i][k];
+        off = k*20 + phase_int_i;
+        off %= 100; // wrap 0…99
+        acc_si += idelay[off] * coeffs[phase_int_i]; // or coeffs[phase_int_i][k]
+        acc_sq += qdelay[off] * coeffs[phase_int_i]; // or coeffs[phase_int_i][k]
+        //acc_si += (idelay[k*20 + phase_int_i] * coeffs[phase_int_i]);
+        //acc_sq += (qdelay[k*20 + phase_int_i] * coeffs[phase_int_i]);
       end
-      // truncate / round to WO bits (here simple shift)
-      i_sym_o     <= acc_i >>> (PROD_W-WO);
-      q_sym_o     <= acc_q >>> (PROD_W-WO);
-      sym_val     <= 1'b1;
-    end
+      acc_i   <= acc_si; // NON-BLOCKING: update register
+      acc_q   <= acc_sq; // NON-BLOCKING: update register
+      acc_val <= '1;
+    end else begin 
+      //acc_i   <= '0;
+      //acc_q   <= '0;
+      acc_val <= '0;
+    end 
   end
 
-  assign sym_valid_o = sym_val;
+  assign sym_valid_o  = acc_val;
+
+  //assign i_sym_o      = acc_i[28:11];
+  //assign q_sym_o      = acc_q[28:11];
+  assign i_sym_o      = acc_i;// >>> 15;
+  assign q_sym_o      = acc_q;// >>> 15;
+  
 
 
-// dbg 
-
-//  logic [19:0] sym_val_sr = '0;
-//  always_ff @(posedge clk) sym_val_sr <= {sym_val_sr[18:0],sym_val};
-//
-//  int shiftPtr = 7;
-//  assign sym_valid_o = sym_val_sr[shiftPtr];
 
 
 endmodule
@@ -155,7 +111,7 @@ polyphase_interp_mdl #(
   .WO        (18)
 ) polyphase_interp_inst (
   .clk           (),
-  .reset_n       (),
+  .rst           (),
   .i_raw_i       (),
   .q_raw_i       (),
   .phase_int_i   (),

@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps  // <time_unit>/<time_precision>
+
 // this module will delay e_out by 1 clock w/respect to I/Q raw (i_in)
 // PI loop filter will delay ctrl by 1 clock w/respect to I/Q raw (i_in)
 // 

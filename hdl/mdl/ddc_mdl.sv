@@ -1,5 +1,5 @@
 // Downconversion module: converts a real ADC input at IF to I/Q baseband.
-module downconverter_mdl #(
+module ddc_mdl #(
     parameter real IF = 50e6,   // Intermediate frequency in Hz.
     parameter real FS = 200e6   // Sample rate in Hz.
 )(
@@ -40,3 +40,18 @@ module downconverter_mdl #(
    end
 
 endmodule
+/*
+
+ddc_mdl #(
+  .IF(50e6 ),
+  .FS(200e6) 
+) ddc_mdl_inst (
+  .clk    (),
+  .reset  (),
+  .adc_in (),
+  .I_out  (),
+  .Q_out  ()
+);
+
+
+*/

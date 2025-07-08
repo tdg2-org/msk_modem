@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps  // <time_unit>/<time_precision>
+
 // -----------------------------------------------------------------------------
 // Non-synthesizable MSK differential slicer / decoder
 //   • Input stream is one complex sample per symbol from the interpolator

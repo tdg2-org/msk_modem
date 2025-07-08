@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps  // <time_unit>/<time_precision>
+
 // -----------------------------------------------------------------------------
 // PI loop-filter (non-synthesisable model)
 //   • Runs once per symbol when e_valid_i pulses

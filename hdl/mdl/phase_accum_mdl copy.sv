@@ -1,5 +1,3 @@
-`timescale 1ns / 1ps  // <time_unit>/<time_precision>
-
 // -----------------------------------------------------------------------------
 // Phase accumulator, Q5.27 format
 //   • Adds 1 sample-step  (1 << FRAC_W)  every 200-MHz clock
@@ -35,7 +33,6 @@ module phase_accum_mdl #
   logic [PHASE_W:0] phi_next;
   logic wrap;
 
-
   always_ff @(posedge clk) begin
     if (!reset_n) begin
       phi         <= '0;
@@ -57,7 +54,7 @@ module phase_accum_mdl #
         phi <= phi_next[PHASE_W-1:0];
 
       // 4) one-clock symbol strobe
-      sym_valid_o <= (wrap);
+      sym_valid_o <= wrap;
 
     end
   end
