@@ -14,7 +14,7 @@
 //     – Delay-line implemented as simple packed array (non-synth)
 //     – mu_i is unused in the polyphase version but kept for pin-compatibility
 // -----------------------------------------------------------------------------
-module polyphase_interp_mdl #
+module polyphase_interp_mdl2 #
 (
   parameter int OSF        = 20,  // polyphase branches
   parameter int TAPS_PPH   = 5 ,  // taps per branch
@@ -41,70 +41,57 @@ module polyphase_interp_mdl #
   
   logic signed [WIQ-1:0] idelay [DEPTH-1:0] = '{default:'0};
   logic signed [WIQ-1:0] qdelay [DEPTH-1:0] = '{default:'0};
-//
+
+  // newest sample at 0, left shift
+  always_ff @(posedge clk) begin
+    if (iq_raw_val_i) begin 
+      idelay <= {idelay[DEPTH-2:0],i_raw_i};
+      qdelay <= {qdelay[DEPTH-2:0],q_raw_i};
+    end
+  end
+  
+  // newest sample is at 99, right shift
 //  always_ff @(posedge clk) begin
 //    if (iq_raw_val_i) begin 
-//      idelay <= {idelay[DEPTH-2:0],i_raw_i};
-//      qdelay <= {qdelay[DEPTH-2:0],q_raw_i};
+//      idelay <= {i_raw_i,idelay[DEPTH-1:1]};
+//      qdelay <= {q_raw_i,qdelay[DEPTH-1:1]};
 //    end
 //  end
 
-  
-  always_ff @(posedge clk) begin
-    if (iq_raw_val_i) begin 
-      idelay <= {i_raw_i,idelay[DEPTH-1:1]};
-      qdelay <= {q_raw_i,qdelay[DEPTH-1:1]};
+
+  localparam int LAG   = 8;                 // ±8 raw samples
+  real y_i, y_q, mu, t, w;                            // high-precision accumulation
+  int centre, idx;
+
+  always_comb begin
+    y_i = 0.0;
+    y_q = 0.0;
+
+    // fractional part μ in [0,1)
+    mu = real'(mu_i) / (1<<27);
+
+    //centre = 99 - phase_int_i; // newest sample is at 99, so the sample with raw offset phase_int_i is at 99-phase_int_i
+    centre = phase_int_i; // newsest sample at idx 0
+    if (centre < 0) centre += DEPTH;        // wrap (defensive)
+
+    // 17-tap sinc window
+    for (int n = -LAG; n <= +LAG; n++) begin
+        idx = centre - n;               // raw offset n
+        if (idx < 0)        idx += DEPTH;   // circular wrap
+        else if (idx >= DEPTH) idx -= DEPTH;
+
+        t = n - mu;                    // fractional distance
+        w = (t == 0.0) ? 1.0 :
+                  $sin(3.14159265358979*t) / (3.14159265358979*t);
+
+        y_i += real'( idelay[idx] ) * w;
+        y_q += real'( qdelay[idx] ) * w;
     end
   end
 
-
-//-------------------------------------------------------------------------------------------------
-// 5-tap per phase branch, in this scenario without pulse-shaping each tap for the phase branch is 
-// identical. this will change when doing pulse-shaping, and will then have to be 20xN taps, where
-// N=5 or the new number of taps for the design
-//-------------------------------------------------------------------------------------------------
-  //localparam signed [15:0] coeffs [OSF-1:0][TAPS_PPH-1:0] = { // for future when doing pulse-shaping at TX side
-  localparam signed [15:0] coeffs [OSF-1:0] = {
-    16'sd2571, 16'sd7649, 16'sd12567, 16'sd17133, 16'sd21283, 16'sd24954, 16'sd28080, 16'sd30272, 16'sd31480, 16'sd31988,
-    16'sd31988, 16'sd31480, 16'sd30272, 16'sd28080, 16'sd24954, 16'sd21283, 16'sd17133, 16'sd12567, 16'sd7649, 16'sd2571};
-
-  logic signed [15:0] coeffs0 [OSF-1:0] =coeffs;//debug view only
-
-  logic signed [34:0] acc_i, acc_q, acc_si, acc_sq;
-  logic acc_val;
-  int unsigned off;
-
-  always_ff @(posedge clk) begin 
-    if (iq_raw_val_i && sym_valid_i) begin
-      acc_si = '0; // BLOCKING: local running sum
-      acc_sq = '0; // BLOCKING: local running sum
-      for (int k = 0; k < TAPS_PPH; k++) begin
-        off = k*20 + phase_int_i;
-        off %= 100; // wrap 0…99
-        acc_si += idelay[off] * coeffs[phase_int_i]; // or coeffs[phase_int_i][k]
-        acc_sq += qdelay[off] * coeffs[phase_int_i]; // or coeffs[phase_int_i][k]
-        //acc_si += (idelay[k*20 + phase_int_i] * coeffs[phase_int_i]);
-        //acc_sq += (qdelay[k*20 + phase_int_i] * coeffs[phase_int_i]);
-      end
-      acc_i   <= acc_si; // NON-BLOCKING: update register
-      acc_q   <= acc_sq; // NON-BLOCKING: update register
-      acc_val <= '1;
-    end else begin 
-      //acc_i   <= '0;
-      //acc_q   <= '0;
-      acc_val <= '0;
-    end 
-  end
-
-  assign sym_valid_o  = acc_val;
-
-  //assign i_sym_o      = acc_i[28:11];
-  //assign q_sym_o      = acc_q[28:11];
-  assign i_sym_o      = acc_i;// >>> 15;
-  assign q_sym_o      = acc_q;// >>> 15;
-  
-
-
+  assign i_sym_o     = $rtoi( y_i );   // raw full-precision
+  assign q_sym_o     = $rtoi( y_q );
+  assign sym_valid_o = sym_valid_i;    // same symbol strobe
 
 
 endmodule

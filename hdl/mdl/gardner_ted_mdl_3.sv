@@ -83,9 +83,9 @@ module gardner_ted_mdl_3 #
 
 
 // processing delay in timing recover loop to align samples for interpolator
-  localparam int RAW_DLY = 11;
-  assign i_raw_delay_o = array_i[RAW_DLY-1];
-  assign q_raw_delay_o = array_q[RAW_DLY-1];
+  localparam int RAW_DLY = 3;
+  assign i_raw_delay_o = array_i[RAW_DLY];
+  assign q_raw_delay_o = array_q[RAW_DLY];
 
 
 endmodule

@@ -34,11 +34,12 @@ module polyphase_interp_tb;
 //-------------------------------------------------------------------------------------------------
 // adc_0, adc_Tp30, adc_Tp10, adc_Tp05, adc_Tp40, adc_Tp49
 // adc_Tp30_C40_Jp01
-// adc_2, adc_long
+// adc_2, adc_long, adc_ones, adc_alternating, adc_zeros
+// adc_2_alt, adc_3_alt, adc_4_alt, adc_5_alt, adc_6_alt, adc_7_alt, 
 //-------------------------------------------------------------------------------------------------
 
   file_read_simple #(
-    .DATA_WIDTH(16),.CLKLESS(0),.PERIOD_NS(),.DATA_FORMAT("dec"),.FILE_DIR("sub/common/hdl/tb/data/"),
+    .DATA_WIDTH(16),.CLKLESS(0),.PERIOD_NS(),.DATA_FORMAT("dec"),.FILE_DIR("sub/msk_modem/sim/data/"),
     .FILE_NAME("adc_long.dat")
   ) file_read_simple_inst0 (
     .rst(~reset_n),.clk(clk),
@@ -131,7 +132,7 @@ module polyphase_interp_tb;
 //-------------------------------------------------------------------------------------------------
   logic signed [34:0] i_fir_NEW, q_fir_NEW;
 
-  polyphase_interp_mdl #(
+  polyphase_interp_mdl2 #(
     .OSF       (20),
     .TAPS_PPH  (INT_W ),
     .WIQ       (WIQ),
@@ -139,8 +140,8 @@ module polyphase_interp_tb;
   ) polyphase_interp_NEW (
     .clk          (clk        ),
     .rst          (rst        ),
-    .i_raw_i      (i_fir      ),
-    .q_raw_i      (q_fir      ),
+    .i_raw_i      (i_raw_delay),
+    .q_raw_i      (q_raw_delay),
     .iq_raw_val_i (iq_val     ), 
     .phase_int_i  (phase_int  ),
     .mu_i         (mu         ),
@@ -150,16 +151,16 @@ module polyphase_interp_tb;
     .sym_valid_o  (sym_val_NEW)
   );
 
-  msk_slicer_dec_mdl #(
+  msk_slicer_dec_mdl2 #(
     .IW (35)
   ) msk_slicer_dec_NEW (
-    .clk          (clk      ),
-    .reset_n      (reset_n  ),
-    .i_sym_i      (i_fir_NEW  ),
-    .q_sym_i      (q_fir_NEW  ),
-    .sym_valid_i  (sym_val_NEW),
-    .data_o       (data_NEW),
-    .data_valid_o (data_val_NEW)
+    .clk          (clk          ),
+    .reset_n      (reset_n      ),
+    .i_sym_i      (i_fir_NEW    ),
+    .q_sym_i      (q_fir_NEW    ),
+    .sym_valid_i  (sym_val_NEW  ),
+    .data_o       (data_NEW     ),
+    .data_valid_o (data_val_NEW )
   );
 
   localparam shifterWid = 128;

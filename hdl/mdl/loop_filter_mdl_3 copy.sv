@@ -28,18 +28,29 @@ module pi_loop_filter_mdl_3 #
 
   logic ctrl_val;
 
-  assign u_pre =  ((e_in_i > 0) && (e_in_i > 127)) ? e_in_i[WERR-1:KP_SHIFT] : 
-                  ((e_in_i > 0) && (e_in_i < 128)) ? '0 :
-                  ((e_in_i < 0) && (e_in_i < -128)) ? {{KP_SHIFT{e_in_i[WERR-1]}},e_in_i[WERR-1:KP_SHIFT]} :
-                  ((e_in_i < 0) && (e_in_i > -127)) ? '0 : '0;
+  assign u_pre =    ((e_in_i > 0) && (e_in_i > 127)) ? e_in_i[WERR-1:KP_SHIFT] : 
+                    ((e_in_i > 0) && (e_in_i < 128)) ? '0 :
+                    ((e_in_i < 0) && (e_in_i < -128)) ? {{KP_SHIFT{e_in_i[WERR-1]}},e_in_i[WERR-1:KP_SHIFT]} :
+                    ((e_in_i < 0) && (e_in_i > -127)) ? '0 : '0;
+
+
+
+  //assign u_prop = (e_in_i >>> KP_SHIFT);
+  //assign acc    = (acc + (e_in_i >>> KI_SHIFT));
+  //assign ctrl   = (u_prop + acc);
+
+  /* NOTE: be careful with shift operation and signed values:
+    (-1) >>> 1 = -1;
+    (+1) >>> 1 = 0;
+    *Depending on how it's used, could be a problem, for example in an integrator... */
 
   always_ff @(posedge clk) begin
     if (!reset_n) begin 
       ctrl_val <= '0;
     end else begin 
       if (e_valid_i) begin
-        u_prop  = u_pre;      // BLOCKING
-        acc     = acc + u_pre;// BLOCKING
+        u_prop  <= u_pre;
+        acc     <= acc + u_pre;
         ctrl    <= u_prop + acc;
       end
       if (e_valid_i) ctrl_val <= '1;
@@ -50,6 +61,8 @@ module pi_loop_filter_mdl_3 #
   assign ctrl_o     = ctrl;
   assign ctrl_val_o = ctrl_val;
 
+        //u_prop1 <= (e_in_i >>> KP_SHIFT);
+        //u_prop2 <= (e_in_i + (e_in_i[WERR-1] ? -1 : 1) << (KP_SHIFT-1)) >>> KP_SHIFT;
 
 //-------------------------------------------------------------------------------------------------
 // debug - 1000 sample average of e_in_i
