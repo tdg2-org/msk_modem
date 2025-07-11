@@ -7,7 +7,7 @@
 //   • Produces a hard bit and a 1-cycle data_valid_o pulse
 //   • Zero multipliers inferred in simulation; just $signed * for clarity
 // -----------------------------------------------------------------------------
-module msk_slicer_dec_mdl2 #
+module msk_slicer_dec_mdl #
 (
   parameter int IW = 18   // width of I/Q symbol samples
 )

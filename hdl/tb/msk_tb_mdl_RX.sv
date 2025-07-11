@@ -3,7 +3,7 @@
 // data generated in pythone and read into RX path
 
 
-module polyphase_interp_tb;
+module msk_tb_mdl_RX;
 
   // Clock and reset
   logic clk=0;
@@ -32,15 +32,22 @@ module polyphase_interp_tb;
   logic rst;
   assign rst = !reset_n;
 //-------------------------------------------------------------------------------------------------
+// adc_long
+// 
 // adc_0, adc_Tp30, adc_Tp10, adc_Tp05, adc_Tp40, adc_Tp49
 // adc_Tp30_C40_Jp01
 // adc_2, adc_long, adc_ones, adc_alternating, adc_zeros
 // adc_2_alt, adc_3_alt, adc_4_alt, adc_5_alt, adc_6_alt, adc_7_alt, 
+// 
+// adc_5alt_Tp10, adc_5_alt_T10_C0_J000, adc_5_alt_T30_C0_J000, adc_5_alt_T0_C10_J000
+// adc_5_alt_T0_C30_J000, adc_5_alt_T0_C0_J001, adc_5_alt_T0_C0_J003, adc_5_alt_T0_C0_J005
+// adc_5_alt_T41_C0_J000, adc_5_alt_T0_C100_J000
+// adc_5_alt_T43_C100_J005, 
 //-------------------------------------------------------------------------------------------------
 
   file_read_simple #(
     .DATA_WIDTH(16),.CLKLESS(0),.PERIOD_NS(),.DATA_FORMAT("dec"),.FILE_DIR("sub/msk_modem/sim/data/"),
-    .FILE_NAME("adc_long.dat")
+    .FILE_NAME("adc_long.dat") //adc_5_alt_T30_C0_J000
   ) file_read_simple_inst0 (
     .rst(~reset_n),.clk(clk),
     .data_out(adc0),
@@ -80,11 +87,11 @@ module polyphase_interp_tb;
   logic         [FRAC_W-1:0]  mu;
 
 
-  gardner_ted_mdl_3 #(
+  gardner_ted_mdl #(
     .OSF  (20),
-    .WIQ  (WIQ),
-    .WERR (WERR) 
-  ) gardner_ted_3_inst (
+    .WI   (WIQ),
+    .WO   (WERR) 
+  ) gardner_ted_inst (
     .clk          (clk      ),
     .reset_n      (reset_n  ),
     .i_in         (i_fir    ),
@@ -97,12 +104,12 @@ module polyphase_interp_tb;
     .q_raw_delay_o(q_raw_delay)
   );
 
-  pi_loop_filter_mdl_3 #(
+  pi_loop_filter_mdl #(
     .WERR      (WERR),
-    .KP_SHIFT  (7 ),
-    .KI_SHIFT  (12),
+//    .KP_SHIFT  (7 ),
+//    .KI_SHIFT  (12),
     .ACC_WIDTH (24)
-  ) pi_loop_filter_inst3 (
+  ) pi_loop_filter_inst (
     .clk        (clk          ),
     .reset_n    (reset_n      ),
     .e_in_i     (ek           ),
@@ -132,7 +139,7 @@ module polyphase_interp_tb;
 //-------------------------------------------------------------------------------------------------
   logic signed [34:0] i_fir_NEW, q_fir_NEW;
 
-  polyphase_interp_mdl2 #(
+  polyphase_interp_mdl #(
     .OSF       (20),
     .TAPS_PPH  (INT_W ),
     .WIQ       (WIQ),
@@ -151,7 +158,7 @@ module polyphase_interp_tb;
     .sym_valid_o  (sym_val_NEW)
   );
 
-  msk_slicer_dec_mdl2 #(
+  msk_slicer_dec_mdl #(
     .IW (35)
   ) msk_slicer_dec_NEW (
     .clk          (clk          ),

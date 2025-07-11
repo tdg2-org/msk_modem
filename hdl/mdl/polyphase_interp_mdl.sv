@@ -1,20 +1,8 @@
 `timescale 1ns / 1ps  // <time_unit>/<time_precision>
-
-// -----------------------------------------------------------------------------
-// Polyphase fractional-delay interpolator (non-synthesizable model)
-//   • OSF       : 20 samples / symbol   (fixed phase-bank count)
-//   • TAPS_PPH  : taps per polyphase FIR branch
-//   • For each symbol strobe (sym_valid_i = 1) it:
-//        1) selects coefficient set  = phase_int_i  (0…19)
-//        2) picks TAPS_PPH samples   = {x[n-d-p], x[n-d-p-OSF], …}
-//        3) returns the dot product  → I/Q_sym_o  + sym_valid_o
-//
-//   Notes
-//     – Coefficients supplied as a 2-D constant array [OSF][TAPS_PPH] (Q1.15)
-//     – Delay-line implemented as simple packed array (non-synth)
-//     – mu_i is unused in the polyphase version but kept for pin-compatibility
-// -----------------------------------------------------------------------------
-module polyphase_interp_mdl2 #
+//-------------------------------------------------------------------------------------------------
+// 
+//-------------------------------------------------------------------------------------------------
+module polyphase_interp_mdl #
 (
   parameter int OSF        = 20,  // polyphase branches
   parameter int TAPS_PPH   = 5 ,  // taps per branch
@@ -35,7 +23,7 @@ module polyphase_interp_mdl2 #
   output logic                  sym_valid_o
 );
 //-------------------------------------------------------------------------------------------------
-// 5taps * 20samples/symbol = 100 deep delay
+// 
 //-------------------------------------------------------------------------------------------------
   localparam DEPTH = OSF * TAPS_PPH;
   
@@ -59,8 +47,8 @@ module polyphase_interp_mdl2 #
 //  end
 
 
-  localparam int LAG   = 8;                 // ±8 raw samples
-  real y_i, y_q, mu, t, w;                            // high-precision accumulation
+  localparam int LAG   = 8;   // ±8 raw samples
+  real y_i, y_q, mu, t, w;    // high-precision accumulation
   int centre, idx;
 
   always_comb begin
@@ -72,7 +60,7 @@ module polyphase_interp_mdl2 #
 
     //centre = 99 - phase_int_i; // newest sample is at 99, so the sample with raw offset phase_int_i is at 99-phase_int_i
     centre = phase_int_i; // newsest sample at idx 0
-    if (centre < 0) centre += DEPTH;        // wrap (defensive)
+    if (centre < 0) centre += DEPTH;  // wrap (defensive)
 
     // 17-tap sinc window
     for (int n = -LAG; n <= +LAG; n++) begin
@@ -81,14 +69,13 @@ module polyphase_interp_mdl2 #
         else if (idx >= DEPTH) idx -= DEPTH;
 
         t = n - mu;                    // fractional distance
-        w = (t == 0.0) ? 1.0 :
-                  $sin(3.14159265358979*t) / (3.14159265358979*t);
+        w = (t == 0.0) ? 1.0 : $sin(3.14159265358979*t) / (3.14159265358979*t);
 
         y_i += real'( idelay[idx] ) * w;
         y_q += real'( qdelay[idx] ) * w;
     end
   end
-
+                      // rtoi = real to int
   assign i_sym_o     = $rtoi( y_i );   // raw full-precision
   assign q_sym_o     = $rtoi( y_q );
   assign sym_valid_o = sym_valid_i;    // same symbol strobe

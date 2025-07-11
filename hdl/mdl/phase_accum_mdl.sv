@@ -33,13 +33,13 @@ module phase_accum_mdl #
 
   logic signed [PHASE_W:0] ctrl_ext;
   logic [PHASE_W:0] phi_next;
-  logic wrap;
+  logic wrap, sym_val;
 
 
   always_ff @(posedge clk) begin
     if (!reset_n) begin
       phi         <= '0;
-      sym_valid_o <= 1'b0;
+      sym_val <= 1'b0;
     end else begin
       // 1) accumulate one sample + fractional correction
 
@@ -57,30 +57,32 @@ module phase_accum_mdl #
         phi <= phi_next[PHASE_W-1:0];
 
       // 4) one-clock symbol strobe
-      sym_valid_o <= (wrap);
+      sym_val <= (wrap);
 
     end
   end
 
   assign phase_int_o = phi[PHASE_W-1:FRAC_W];   // coarse 0…19
   assign mu_o        = phi[FRAC_W-1:0];         // fractional part (Q0.27)
-
+  assign sym_valid_o = sym_val;
 
 
 //-------------------------------------------------------------------------------------------------
 // debug
 //-------------------------------------------------------------------------------------------------
-  int cnt = 0;
+  int cnt = 0, cnt_prev=0;
   logic inc,dec,nom;
+  logic wrap_reg;
+
   always_ff @(posedge clk) begin
     inc <= '0; dec <= '0; nom <= '0;
-    
-    if (wrap) cnt <= 0;
+
+    if (sym_val == '1) cnt <= 0;
     else cnt <= cnt + 1;
 
-    if      (wrap && (cnt < 19))  dec <= '1;
-    else if (wrap && (cnt > 19))  inc <= '1;
-    else if (wrap) nom <= '1;
+    if      (sym_val && (cnt < 19))  dec <= '1;
+    else if (sym_val && (cnt > 19))  inc <= '1;
+    else if (sym_val) nom <= '1;
 
   end
 

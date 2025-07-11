@@ -6,11 +6,11 @@
 //   • Fixed-point gains implemented as right shifts
 //   • ctrl_o drives the phase-accumulator (same 18-bit scale as Gardner e_out_o)
 // -----------------------------------------------------------------------------
-module pi_loop_filter_mdl_3 #
+module pi_loop_filter_mdl #
 (
   parameter int WERR        = 18,  // width of e_in_i and ctrl_o
   parameter int KP_SHIFT    = 7,   // Kp = 2^-KP_SHIFT
-  parameter int KI_SHIFT    = 12,  // Ki = 2^-KI_SHIFT
+  parameter int KI_SHIFT    = 11,  // Ki = 2^-KI_SHIFT
   parameter int ACC_WIDTH   = 24   // integrator register width
 )
 (
@@ -24,22 +24,34 @@ module pi_loop_filter_mdl_3 #
 
   logic signed [WERR-1:0] ctrl=0;
   logic signed [ACC_WIDTH-1:0] acc=0;
-  logic signed [WERR-1:0] u_prop=0,u_pre;          // proportional term
-
+  logic signed [WERR-1:0] u_prop=0,prop_pre, int_pre, prop_pre1, int_pre1;          // proportional term
   logic ctrl_val;
 
-  assign u_pre =  ((e_in_i > 0) && (e_in_i > 127)) ? e_in_i[WERR-1:KP_SHIFT] : 
-                  ((e_in_i > 0) && (e_in_i < 128)) ? '0 :
-                  ((e_in_i < 0) && (e_in_i < -128)) ? {{KP_SHIFT{e_in_i[WERR-1]}},e_in_i[WERR-1:KP_SHIFT]} :
-                  ((e_in_i < 0) && (e_in_i > -127)) ? '0 : '0;
+  localparam int DZ_KP = (1 << KP_SHIFT) - 1;
+  localparam int DZ_KI = (1 << KI_SHIFT) - 1;
+
+  assign prop_pre = ((e_in_i > 0) && (e_in_i >   DZ_KP)) ? e_in_i[WERR-1:KP_SHIFT] :
+                    ((e_in_i > 0) && (e_in_i <=  DZ_KP)) ? '0 :
+                    ((e_in_i < 0) && (e_in_i <  -DZ_KP)) ? {{KP_SHIFT{e_in_i[WERR-1]}}, e_in_i[WERR-1:KP_SHIFT]} :
+                    ((e_in_i < 0) && (e_in_i >= -DZ_KP)) ? '0 : '0;
+
+  assign int_pre =  ((e_in_i > 0) && (e_in_i >   DZ_KI)) ? e_in_i[WERR-1:KI_SHIFT] :
+                    ((e_in_i > 0) && (e_in_i <=  DZ_KI)) ? '0 :
+                    ((e_in_i < 0) && (e_in_i <  -DZ_KI)) ? {{KI_SHIFT{e_in_i[WERR-1]}}, e_in_i[WERR-1:KI_SHIFT]} :
+                    ((e_in_i < 0) && (e_in_i >= -DZ_KI)) ? '0 : '0;
+
+
+  //assign prop_pre1 = e_in_i >>> KP_SHIFT;
+  //assign int_pre1  = e_in_i >>> KI_SHIFT;
+
 
   always_ff @(posedge clk) begin
     if (!reset_n) begin 
       ctrl_val <= '0;
     end else begin 
       if (e_valid_i) begin
-        u_prop  = u_pre;      // BLOCKING
-        acc     = acc + u_pre;// BLOCKING
+        u_prop  = prop_pre;       // BLOCKING
+        acc     = acc + int_pre;  // BLOCKING
         ctrl    <= u_prop + acc;
       end
       if (e_valid_i) ctrl_val <= '1;
@@ -50,7 +62,8 @@ module pi_loop_filter_mdl_3 #
   assign ctrl_o     = ctrl;
   assign ctrl_val_o = ctrl_val;
 
-
+endmodule
+/*
 //-------------------------------------------------------------------------------------------------
 // debug - 1000 sample average of e_in_i
 //-------------------------------------------------------------------------------------------------

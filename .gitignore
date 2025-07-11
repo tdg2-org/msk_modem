@@ -9,5 +9,3 @@
 !/sim/*.do 
 !/sim/*.tcl 
 
-!/sim/data
-!/sim/data/*.dat

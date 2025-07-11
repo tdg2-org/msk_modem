@@ -4,15 +4,17 @@
 module ddc_lpf_mdl #(
     parameter real  IF = 50e6,   // Intermediate frequency in Hz.
     parameter real  FS = 200e6,   // Sample rate in Hz.
+    parameter int   WI = 16,
+    parameter int   WO = 16,
     parameter int   SIM_DELAY = 21
 )(
     input  logic       clk,
     input  logic       rst,
-    input  logic signed [15:0] adc_in,   // ADC input (digitized real signal).
-    input  logic               adc_val,
-    output logic signed [15:0] I_out,    // Recovered In-phase component.
-    output logic signed [15:0] Q_out,     // Recovered Quadrature component.
-    output logic               iq_out_val
+    input  logic signed [WI-1:0]  adc_in,   // ADC input (digitized real signal).
+    input  logic                  adc_val,
+    output logic signed [WO-1:0]  I_out,    // Recovered In-phase component.
+    output logic signed [WO-1:0]  Q_out,     // Recovered Quadrature component.
+    output logic                  iq_out_val
 );
 
    // Internal time tracking.
