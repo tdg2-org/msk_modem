@@ -1,7 +1,11 @@
 `timescale 1ns / 1ps  // <time_unit>/<time_precision>
-//-------------------------------------------------------------------------------------------------
-// 
-//-------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------
+// Ideal fractional-delay interpolator (debug-only, non-synthesizable)
+//
+// • Uses a ±8-sample sinc kernel  → 17 taps
+// • phase_int_i  : integer part 0…19  (coarse delay  p/20  symbols)
+// • mu_i (Q0.27) : fractional part     0…1            symbols
+//--------------------------------------------------------------------------
 module polyphase_interp_mdl #
 (
   parameter int OSF        = 20,  // polyphase branches

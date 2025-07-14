@@ -72,6 +72,27 @@ module msk_tb_mdl_RX;
     .iq_out_val(iq_val)
   );
 
+  rrc_mf_mdl  rrc_mf_mdl_inst (
+    .clk      (clk    ),
+    .rst      (rst    ),
+    .i_in     (i_fir  ),
+    .q_in     (q_fir  ),
+    .iq_val_i (iq_val ),
+    .i_out    (),
+    .q_out    (),
+    .iq_val_o ()
+  );
+
+  rrc_mf_mdl_0  mf0 (
+    .clk      (clk    ),
+    .rst      (rst    ),
+    .i_in     (i_fir  ),
+    .q_in     (q_fir  ),
+    .iq_val_i (iq_val ),
+    .i_out    (),
+    .q_out    (),
+    .iq_val_o ()
+  );
 
 
   localparam int WIQ    = 16;
