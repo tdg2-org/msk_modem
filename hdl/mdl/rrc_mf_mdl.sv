@@ -11,7 +11,7 @@ module rrc_mf_mdl #
 (
   parameter int OSF  = 20,        // samples / symbol  (fixed)
   parameter int WIQ  = 16,        // input width
-  parameter int WO   = 18         // output width
+  parameter int WO   = 16         // output width
 )
 (
   input  logic                       clk,
@@ -64,11 +64,9 @@ module rrc_mf_mdl #
     val_d <= iq_val_i;   // 1-clock latency
   end
 
-  // ---------------------------------------------------------------------------
-  // 4. take the MSBs (>>15)  →  Q1.15 taps cancel the +15 gain
-  // ---------------------------------------------------------------------------
-  assign i_out    = acc_i[ACC_W-1 -: WO];
-  assign q_out    = acc_q[ACC_W-1 -: WO];
+
+  assign i_out    = acc_i[33:18];
+  assign q_out    = acc_q[33:18];
   assign iq_val_o = val_d;
 
 endmodule

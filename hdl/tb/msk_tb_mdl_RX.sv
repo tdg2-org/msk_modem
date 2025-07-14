@@ -9,15 +9,6 @@ module msk_tb_mdl_RX;
   logic clk=0;
   logic reset_n;
 
-  // Binary data input
-  logic demod_data;
-
-  // I/Q signals
-  logic signed [15:0] i_fir, i_fir1;
-  logic signed [15:0] q_fir, q_fir1;
-  // Real-valued IF signal
-  logic signed [15:0] adc0, adc1;
-
   // Clock generation (200 MHz)
   always #2.5ns clk = ~clk; // 5 ns period (200 MHz)
   //always #625ps clk = ~clk; // 800 MHz
@@ -44,6 +35,7 @@ module msk_tb_mdl_RX;
 // adc_5_alt_T41_C0_J000, adc_5_alt_T0_C100_J000
 // adc_5_alt_T43_C100_J005, 
 //-------------------------------------------------------------------------------------------------
+  logic signed [15:0] adc0;
 
   file_read_simple #(
     .DATA_WIDTH(16),.CLKLESS(0),.PERIOD_NS(),.DATA_FORMAT("dec"),.FILE_DIR("sub/msk_modem/sim/data/"),
@@ -57,7 +49,8 @@ module msk_tb_mdl_RX;
 //-------------------------------------------------------------------------------------------------
 //
 //-------------------------------------------------------------------------------------------------
-
+  logic signed [15:0] i_fir, i_mf;
+  logic signed [15:0] q_fir, q_mf;
 
   ddc_lpf_mdl #(
     .IF(50e6 ),
@@ -78,21 +71,11 @@ module msk_tb_mdl_RX;
     .i_in     (i_fir  ),
     .q_in     (q_fir  ),
     .iq_val_i (iq_val ),
-    .i_out    (),
-    .q_out    (),
-    .iq_val_o ()
+    .i_out    (i_mf   ),
+    .q_out    (q_mf   ),
+    .iq_val_o (mf_val )
   );
 
-  rrc_mf_mdl_0  mf0 (
-    .clk      (clk    ),
-    .rst      (rst    ),
-    .i_in     (i_fir  ),
-    .q_in     (q_fir  ),
-    .iq_val_i (iq_val ),
-    .i_out    (),
-    .q_out    (),
-    .iq_val_o ()
-  );
 
 
   localparam int WIQ    = 16;
@@ -115,9 +98,9 @@ module msk_tb_mdl_RX;
   ) gardner_ted_inst (
     .clk          (clk      ),
     .reset_n      (reset_n  ),
-    .i_in         (i_fir    ),
-    .q_in         (q_fir    ),
-    .iq_val       (iq_val   ),
+    .i_in         (i_mf     ),
+    .q_in         (q_mf     ),
+    .iq_val       (mf_val   ),
     .sym_valid_i  (sym_val  ),
     .e_out_o      (ek       ),
     .e_valid_o    (ek_val   ),
