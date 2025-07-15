@@ -11,6 +11,8 @@
 //   h[n] = sin(π·(1−|τ|)/2),  τ = (n−20)/20,  |τ|<1
 //   quantised: round(h · 32767)
 
+import mf_taps_pkg::*;
+
 module msk_mf #(
   parameter int WI  = 16,  // input width
   parameter int WO  = 16   // output width
@@ -23,23 +25,13 @@ module msk_mf #(
 );
 
   // -------------------- constants -----------------------------------
-  localparam int  NUM_TAPS = 41;
+  localparam int  NUM_TAPS = MF_NTAPS; //pkg file mf_taps_pkg
   localparam real INV_GAIN = 1.0 / 19.99883943703;   // 1 / Σ h²
   localparam real I2R      = 1.0   / 32768.0;        // int16 → real
   localparam real R2I      = 32768.0;                // real  → int16
 
   // 16‑bit half‑sine taps, peak = 32767
-  localparam logic signed [15:0] COEFFS [NUM_TAPS] = '{
-    16'sd0,      16'sd2571, 16'sd5126, 16'sd7649, 16'sd10126,
-    16'sd12539,  16'sd14876, 16'sd17121, 16'sd19260, 16'sd21280,
-    16'sd23170,  16'sd24916, 16'sd26509, 16'sd27938, 16'sd29196,
-    16'sd30273,  16'sd31163, 16'sd31862, 16'sd32364, 16'sd32666,
-    16'sd32767,  16'sd32666, 16'sd32364, 16'sd31862, 16'sd31163,
-    16'sd30273,  16'sd29196, 16'sd27938, 16'sd26509, 16'sd24916,
-    16'sd23170,  16'sd21280, 16'sd19260, 16'sd17121, 16'sd14876,
-    16'sd12539,  16'sd10126, 16'sd7649,  16'sd5126,  16'sd2571,
-    16'sd0
-  };
+  localparam logic signed [15:0] COEFFS [NUM_TAPS] = MF_COEFFS; //pkg file mf_taps_pkg
 
   // -------------------- state ---------------------------------------
   real shift_reg [NUM_TAPS];   // delay‑line (real)

@@ -49,8 +49,10 @@ module msk_tb_mdl_RX;
 //-------------------------------------------------------------------------------------------------
 //
 //-------------------------------------------------------------------------------------------------
-  logic signed [15:0] i_fir, i_mf;
-  logic signed [15:0] q_fir, q_mf;
+  localparam IQW = 16;
+  
+  logic signed [IQW-1:0] i_fir, i_mf;
+  logic signed [IQW-1:0] q_fir, q_mf;
 
   ddc_lpf_mdl #(
     .IF(50e6 ),
@@ -65,19 +67,8 @@ module msk_tb_mdl_RX;
     .iq_out_val(iq_val)
   );
 
-  rrc_mf_mdl  rrc_mf_mdl_inst (
-    .clk      (clk    ),
-    .rst      (rst    ),
-    .i_in     (i_fir  ),
-    .q_in     (q_fir  ),
-    .iq_val_i (iq_val ),
-    .i_out    (   ),
-    .q_out    (   ),
-    .iq_val_o ( )
-  );
-
   msk_mf #(
-    .WI (16), .WO (16)
+    .WI (IQW), .WO (IQW)
   ) msk_mf_I (
     .clk      (clk),
     .din      (i_fir),
@@ -87,7 +78,7 @@ module msk_tb_mdl_RX;
   );
 
   msk_mf #(
-    .WI (16), .WO (16)
+    .WI (IQW), .WO (IQW)
   ) msk_mf_Q (
     .clk      (clk),
     .din      (q_fir),
@@ -98,7 +89,7 @@ module msk_tb_mdl_RX;
 
 
 
-  localparam int WIQ    = 16;
+  localparam int WIQ    = IQW;
   localparam int WO     = 18;
   localparam int WERR   = 18;
   localparam int INT_W  = 5;

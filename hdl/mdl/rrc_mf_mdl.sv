@@ -11,7 +11,7 @@
 //   • Span      : 6 symbols  → 121 taps  (-3T … +3T, inclusive)
 //   • Coeffs    : hard-coded, Q1.15
 // -----------------------------------------------------------------------------
-import mf_taps_pkg::*;
+import rrc_mf_taps_pkg::*;
 
 module rrc_mf_mdl #
 (
