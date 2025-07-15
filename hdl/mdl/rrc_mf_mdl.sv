@@ -1,3 +1,9 @@
+/* 
+  This "works", but √RC is not ideal for MSK, so abandoning this...
+*/
+
+
+
 // -----------------------------------------------------------------------------
 // √RC matched filter  (simulation-only, fixed taps)
 //   • OSF       : 20 samples / symbol   (200 MHz over 10 MHz)

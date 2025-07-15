@@ -71,9 +71,29 @@ module msk_tb_mdl_RX;
     .i_in     (i_fir  ),
     .q_in     (q_fir  ),
     .iq_val_i (iq_val ),
-    .i_out    (i_mf   ),
-    .q_out    (q_mf   ),
-    .iq_val_o (mf_val )
+    .i_out    (   ),
+    .q_out    (   ),
+    .iq_val_o ( )
+  );
+
+  msk_mf #(
+    .WI (16), .WO (16)
+  ) msk_mf_I (
+    .clk      (clk),
+    .din      (i_fir),
+    .din_val  (iq_val),
+    .dout     (i_mf),
+    .dout_val (mf_val)
+  );
+
+  msk_mf #(
+    .WI (16), .WO (16)
+  ) msk_mf_Q (
+    .clk      (clk),
+    .din      (q_fir),
+    .din_val  (iq_val),
+    .dout     (q_mf),
+    .dout_val ()
   );
 
 
