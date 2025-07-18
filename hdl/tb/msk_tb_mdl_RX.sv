@@ -292,11 +292,11 @@ module msk_tb_mdl_RX;
 //-------------------------------------------------------------------------------------------------
   logic cfo_en;
 
-  variable_strobe # (.PTR(2)) 
-  variable_strobe_inst (
-    .clk(clk),.rst(rst),
-    .en_i('1),
-    .stb_o(sym_val_dbg));
+//  variable_strobe # (.PTR(2)) 
+//  variable_strobe_inst (
+//    .clk(clk),.rst(rst),
+//    .en_i('1),
+//    .stb_o(sym_val_dbg));
 
 
   coarse_cfo_mdl coarse_cfo_mdl_inst (
@@ -316,12 +316,24 @@ module msk_tb_mdl_RX;
     cfo_en = '1;
   end
 
-//i_sym_interp
-//q_sym_interp
-//  i_fir
-//  q_fir
-//  i_mf
-//  q_mf
+
+  derotator_mdl #(
+    .WIDTH        (16),
+    .PHASE_WIDTH  (32)
+  ) derotator_mdl_inst (
+    .clk            (clk),
+    .rst            (rst),            // sync reset (active‑high)
+    .sym_valid_in   (sym_val_interp),   // 1 = current I/Q is a symbol‑center sample
+    .din_i          (i_sym_interp),
+    .din_q          (q_sym_interp),
+    .freq_word      ('0),
+    .sym_valid_out  (),  // aligned with dout_*
+    .dout_i         (),
+    .dout_q         ()
+  );
+
+
+
 
 
 endmodule
