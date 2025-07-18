@@ -54,8 +54,8 @@ module ddc_lpf_mdl #(
 
 // INVERTING TO MATCH XILINX IP
   logic [15:0] i_ddc2,q_ddc2;
-  assign i_ddc2 = -i_ddc;
-  assign q_ddc2 = -q_ddc;
+  assign i_ddc2 = i_ddc;
+  assign q_ddc2 = q_ddc;
 
 //-------------------------------------------------------------------------------------------------
 // LPF

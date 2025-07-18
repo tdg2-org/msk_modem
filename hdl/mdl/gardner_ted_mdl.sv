@@ -8,9 +8,10 @@
 // -----------------------------------------------------------------------------
 module gardner_ted_mdl #
 (
-  parameter int OSF   = 20,   // samples / symbol
-  parameter int WI    = 16,   // I/Q input width
-  parameter int WO    = 18    // error-output width
+  parameter int RAW_DLY = 20,
+  parameter int OSF     = 20,   // samples / symbol
+  parameter int WI      = 16,   // I/Q input width
+  parameter int WO      = 18    // error-output width
 )
 (
   input  logic                    clk,
@@ -83,7 +84,7 @@ module gardner_ted_mdl #
 
 
 // processing delay in timing recover loop to align samples for interpolator
-  localparam int RAW_DLY = 3;
+  //localparam int RAW_DLY = 3;
   assign i_raw_delay_o = array_i[RAW_DLY];
   assign q_raw_delay_o = array_q[RAW_DLY];
 
@@ -95,9 +96,10 @@ endmodule
 /* instantiation template ------------------------------------------------------
 
 gardner_ted_mdl_3 #(
-  .OSF  (20),
-  .WI   (16),
-  .WO   (18)
+  .RAW_DLY  (3),
+  .OSF      (20),
+  .WI       (16),
+  .WO       (18)
 ) gardner_ted_inst (
   .clk          (),
   .reset_n      (),

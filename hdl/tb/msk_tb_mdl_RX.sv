@@ -28,7 +28,7 @@ module msk_tb_mdl_RX;
 // adc_0, adc_Tp30, adc_Tp10, adc_Tp05, adc_Tp40, adc_Tp49
 // adc_Tp30_C40_Jp01
 // adc_2, adc_long, adc_ones, adc_alternating, adc_zeros
-// adc_2_alt, adc_3_alt, adc_4_alt, adc_5_alt, adc_6_alt, adc_7_alt, 
+// adc_2_alt, adc_3_alt, adc_4_alt, adc_5_alt, adc_6_alt, adc_7_alt, adc_4_alt_T0_C0_J000
 // 
 // adc_5alt_Tp10, adc_5_alt_T10_C0_J000, adc_5_alt_T30_C0_J000, adc_5_alt_T0_C10_J000
 // adc_5_alt_T0_C30_J000, adc_5_alt_T0_C0_J001, adc_5_alt_T0_C0_J003, adc_5_alt_T0_C0_J005
@@ -39,7 +39,7 @@ module msk_tb_mdl_RX;
 
   file_read_simple #(
     .DATA_WIDTH(16),.CLKLESS(0),.PERIOD_NS(),.DATA_FORMAT("dec"),.FILE_DIR("sub/msk_modem/sim/data/"),
-    .FILE_NAME("adc_long.dat") //adc_5_alt_T30_C0_J000
+    .FILE_NAME("adc_4_alt.dat") //adc_5_alt_T30_C0_J000
   ) file_read_simple_inst0 (
     .rst(~reset_n),.clk(clk),
     .data_out(adc0),
@@ -103,9 +103,10 @@ module msk_tb_mdl_RX;
 
 
   gardner_ted_mdl #(
-    .OSF  (20),
-    .WI   (WIQ),
-    .WO   (WERR) 
+    .RAW_DLY  (5), // adjusted here to 5 to stabilize coarse CFO. need repeat data sequence of "0011" / "00001111" 
+    .OSF      (20),
+    .WI       (16),
+    .WO       (18)
   ) gardner_ted_inst (
     .clk          (clk      ),
     .reset_n      (reset_n  ),
@@ -152,13 +153,14 @@ module msk_tb_mdl_RX;
 //-------------------------------------------------------------------------------------------------
 // new interp mdl
 //-------------------------------------------------------------------------------------------------
-  logic signed [34:0] i_fir_NEW, q_fir_NEW;
+  localparam PIW = 16;
+  logic signed [PIW-1:0] i_sym_interp, q_sym_interp;
 
   polyphase_interp_mdl #(
     .OSF       (20),
     .TAPS_PPH  (INT_W ),
     .WIQ       (WIQ),
-    .WO        (35)
+    .WO        (PIW)
   ) polyphase_interp_NEW (
     .clk          (clk        ),
     .rst          (rst        ),
@@ -168,19 +170,19 @@ module msk_tb_mdl_RX;
     .phase_int_i  (phase_int  ),
     .mu_i         (mu         ),
     .sym_valid_i  (sym_val    ),
-    .i_sym_o      (i_fir_NEW  ),
-    .q_sym_o      (q_fir_NEW  ),
-    .sym_valid_o  (sym_val_NEW)
+    .i_sym_o      (i_sym_interp  ),
+    .q_sym_o      (q_sym_interp  ),
+    .sym_valid_o  (sym_val_interp)
   );
 
   msk_slicer_dec_mdl #(
-    .IW (35)
+    .IW (PIW)
   ) msk_slicer_dec_NEW (
     .clk          (clk          ),
     .reset_n      (reset_n      ),
-    .i_sym_i      (i_fir_NEW    ),
-    .q_sym_i      (q_fir_NEW    ),
-    .sym_valid_i  (sym_val_NEW  ),
+    .i_sym_i      (i_sym_interp ),
+    .q_sym_i      (q_sym_interp ),
+    .sym_valid_i  (sym_val_interp  ),
     .data_o       (data_NEW     ),
     .data_valid_o (data_val_NEW )
   );
@@ -283,6 +285,44 @@ module msk_tb_mdl_RX;
     .data_i     (data_OVERSAMP),
     .data_val_i (data_val_OVERSAMP)
   );
+
+
+//-------------------------------------------------------------------------------------------------
+// carrier recovery
+//-------------------------------------------------------------------------------------------------
+  logic cfo_en;
+
+  variable_strobe # (.PTR(2)) 
+  variable_strobe_inst (
+    .clk(clk),.rst(rst),
+    .en_i('1),
+    .stb_o(sym_val_dbg));
+
+
+  coarse_cfo_mdl coarse_cfo_mdl_inst (
+    .clk        (clk              ),
+    .rst_n      (reset_n          ),
+    .enable     (cfo_en           ), // high during acquisition
+    .vld_in     (sym_val_interp   ), // one strobe per symbol
+    .i_in       (i_sym_interp     ), // timing‑loop I sample
+    .q_in       (q_sym_interp     ), // timing‑loop Q sample
+    .freq_word  (), // coarse word for NCO
+    .done       ()  // 1‑clk pulse when estimate valid
+  );
+
+  initial begin 
+    cfo_en = '0;
+    #400ns
+    cfo_en = '1;
+  end
+
+//i_sym_interp
+//q_sym_interp
+//  i_fir
+//  q_fir
+//  i_mf
+//  q_mf
+
 
 endmodule
 
