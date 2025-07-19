@@ -317,23 +317,74 @@ module msk_tb_mdl_RX;
   end
 
 
+  localparam DIW = 16;
+  localparam DDSW = 16;
+  localparam PW = 32;
+ 
+  logic signed [DIW-1:0] derot_i, derot_q;
+  logic signed [DDSW-1:0] dds_sin, dds_cos;
+
+
   derotator_mdl #(
-    .WIDTH        (16),
-    .PHASE_WIDTH  (32)
+    .WIDTH        (DIW),
+    .DDS_WIDTH    (DDSW),
+    .PHASE_WIDTH  (PW)
   ) derotator_mdl_inst (
     .clk            (clk),
-    .rst            (rst),            // sync reset (active‑high)
-    .sym_valid_in   (sym_val_interp),   // 1 = current I/Q is a symbol‑center sample
+    .rst            (rst),            
+    .sym_valid_in   (sym_val_interp && cfo_en), 
     .din_i          (i_sym_interp),
     .din_q          (q_sym_interp),
-    .freq_word      ('0),
-    .sym_valid_out  (),  // aligned with dout_*
-    .dout_i         (),
-    .dout_q         ()
+    .cos_in         (dds_cos),
+    .sin_in         (dds_sin),
+    .sym_valid_out  (derot_val),  
+    .dout_i         (derot_i),
+    .dout_q         (derot_q)
   );
 
+  localparam EW = 24;
+  logic signed [EW-1:0] pdet_err;
 
+  phase_detector_mdl #(
+    .IW (DIW), 
+    .EW (EW)  
+  ) phase_detector_mdl_inst (
+    .clk        (clk),
+    .rst        (rst),
+    .sym_valid  (derot_val && cfo_en),
+    .din_i      (derot_i),
+    .din_q      (derot_q),
+    .err_valid  (pdet_err_val),
+    .phase_err  (pdet_err)
+  );
 
+  logic signed [PW-1:0] freq_word;
+
+  loop_filter_cfo_mdl #(
+    .ERR_WIDTH      (EW), 
+    .PHASE_WIDTH    (PW), 
+    .KP             (1.2e-6), 
+    .KI             (5.0e-8)  
+  ) loop_filter_cfo_mdl_inst (
+    .clk            (clk),
+    .rst            (rst),
+    .err_valid      (pdet_err_val),   
+    .phase_err      (pdet_err),   
+    .freq_valid_o   (freq_word_val),   
+    .freq_word_o    (freq_word)    
+  );
+
+  nco_dds_mdl #(
+    .PHASE_WIDTH  (PW),
+    .AMP_WIDTH    (DDSW) 
+  ) nco_dds_mdl_inst (
+    .clk          (clk),
+    .rst          (rst),
+    .freq_word_i  (freq_word),   
+    .phase_word_o (),   
+    .cos_out      (dds_cos),   
+    .sin_out      (dds_sin)    
+  );
 
 
 endmodule
