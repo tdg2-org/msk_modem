@@ -321,8 +321,8 @@ module msk_tb_mdl_RX;
   ) loop_filter_cfo_mdl_inst (
     .clk            (clk),
     .rst            (rst),
-    .err_valid      (pdet_err_val),   
-    .phase_err      (pdet_err),   // phase detect
+    .err_valid_i    (pdet_err_val),   
+    .phase_err_i    (pdet_err),   // phase detect
     .freq_valid_o   (freq_word_val),   
     .freq_word_o    (freq_word)    
   );

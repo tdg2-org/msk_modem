@@ -6,7 +6,7 @@
 //   • Saturates integrator and output to avoid wrap
 // ------------------------------------------------------------
 module loop_filter_cfo_mdl #(
-  parameter int ERR_WIDTH   = 24,        // width of phase_err input
+  parameter int ERR_WIDTH   = 24,        // width of phase_err_i input
   parameter int PHASE_WIDTH = 32,        // width of freq_word_o output
   // loop gains (tune in simulation, then quantise for RTL)
   parameter real KP         = 1.2e-6,    // proportional gain
@@ -14,8 +14,8 @@ module loop_filter_cfo_mdl #(
 )(
   input  logic                           clk,
   input  logic                           rst,          // synchronous, active-high
-  input  logic                           err_valid,    // strobe from phase detector
-  input  logic signed [ERR_WIDTH-1:0]    phase_err,    // Q1.(ERR_WIDTH-1)
+  input  logic                           err_valid_i,    // strobe from phase detector
+  input  logic signed [ERR_WIDTH-1:0]    phase_err_i,    // Q1.(ERR_WIDTH-1)
   output logic                           freq_valid_o,   // aligned with freq_word_o
   output logic signed [PHASE_WIDTH-1:0]  freq_word_o     // Q1.(PHASE_WIDTH-1)
 );
@@ -38,9 +38,9 @@ module loop_filter_cfo_mdl #(
     end else begin
       freq_valid_o  <= 1'b0;              // default low
 
-      if (err_valid) begin
+      if (err_valid_i) begin
         // convert fixed-point error to real
-        err_r   = $itor(phase_err) * ERR_SCALE;
+        err_r   = $itor(phase_err_i) * ERR_SCALE;
 
         // proportional + integral terms
         prop_r    = KP * err_r;
@@ -58,7 +58,7 @@ module loop_filter_cfo_mdl #(
         end
 
         freq_word_o  <= freq_i;
-        freq_valid_o <= 1'b1;            // one-cycle latency relative to phase_err
+        freq_valid_o <= 1'b1;            // one-cycle latency relative to phase_err_i
       end
     end
   end
@@ -75,8 +75,8 @@ endmodule
   ) loop_filter_cfo_mdl_inst (
     .clk          (clk),
     .rst          (rst),
-    .err_valid    (),   
-    .phase_err    (),   
+    .err_valid_i  (),   
+    .phase_err_i  (),   
     .freq_valid_o (),   
     .freq_word_o  ()    
   );
