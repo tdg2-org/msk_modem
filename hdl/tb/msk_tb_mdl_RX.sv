@@ -22,6 +22,12 @@ module msk_tb_mdl_RX;
   end
   logic rst;
   assign rst = !reset_n;
+
+//-------------------------------------------------------------------------------------------------
+
+  localparam int FDW = 256;
+  localparam logic [FDW-1:0] FIXED_DATA = 'h901000000033000000FFFFFFFF010000007700ffff00000001010000ffa50ffe;
+
 //-------------------------------------------------------------------------------------------------
 // adc_long
 // 
@@ -34,12 +40,14 @@ module msk_tb_mdl_RX;
 // adc_5_alt_T0_C30_J000, adc_5_alt_T0_C0_J001, adc_5_alt_T0_C0_J003, adc_5_alt_T0_C0_J005
 // adc_5_alt_T41_C0_J000, adc_5_alt_T0_C100_J000
 // adc_5_alt_T43_C100_J005, 
+//
+// adc_data_nominal, adc_data_F1000.0
 //-------------------------------------------------------------------------------------------------
   logic signed [15:0] adc0;
 
   file_read_simple #(
     .DATA_WIDTH(16),.CLKLESS(0),.PERIOD_NS(),.DATA_FORMAT("dec"),.FILE_DIR("sub/msk_modem/sim/data/"),
-    .FILE_NAME("adc_4_alt.dat") //adc_5_alt_T30_C0_J000
+    .FILE_NAME("adc_data_F1000.0.dat") //adc_5_alt_T30_C0_J000
   ) file_read_simple_inst0 (
     .rst(~reset_n),.clk(clk),
     .data_out(adc0),
@@ -190,6 +198,8 @@ module msk_tb_mdl_RX;
   localparam shifterWid = 128;
 
   shifter_viewer # (
+    .FDW(FDW),
+    .FIXED_DATA(FIXED_DATA),
     .WIDTH(shifterWid)
   ) shifter_viewer_NEW (
     .clk        (clk),
@@ -198,69 +208,10 @@ module msk_tb_mdl_RX;
     .data_val_i (data_val_NEW)
   );
 
-
-//-------------------------------------------------------------------------------------------------
-// old interp mdl
-//-------------------------------------------------------------------------------------------------
-/*
-  polyphase_interp_mdl_OLD #(
-    .OSF       (20),
-    .TAPS_PPH  (INT_W ),
-    .WIQ       (WIQ),
-    .WO        (WO)
-  ) polyphase_interp_inst_OLD (
-    .clk          (clk        ),
-    .reset_n      (reset_n    ),
-    .i_raw_i      (i_fir      ),
-    .q_raw_i      (q_fir      ),
-    .iq_raw_val_i (iq_val     ), 
-    .phase_int_i  (phase_int  ),
-    .mu_i         (mu         ),
-    .sym_valid_i  (sym_val    ),
-    .i_sym_o      (i_sym      ),
-    .q_sym_o      (q_sym      ),
-    .sym_valid_o  (sym_val_decoder)
-  );
-
-  msk_slicer_dec_mdl #(
-    .IW (WO)
-  ) msk_slicer_dec_OLD (
-    .clk          (clk      ),
-    .reset_n      (reset_n  ),
-    .i_sym_i      (i_sym    ),
-    .q_sym_i      (q_sym    ),
-    .sym_valid_i  (sym_val_decoder),
-    .data_o       (data_OLD),
-    .data_valid_o (data_val_OLD)
-  );
-
-
-  shifter_viewer # (
-    .WIDTH(shifterWid)
-  ) shifter_viewer_OLD (
-    .clk        (clk),
-    .rst        (!reset_n),
-    .data_i     (data_OLD),
-    .data_val_i (data_val_OLD)
-  );
-*/
 //-------------------------------------------------------------------------------------------------
 // OVERSAMP BYPASS old demod works
 // bypass loop
 //-------------------------------------------------------------------------------------------------
-
-//  msk_demod #(
-//      .FS(200.0e6)
-//  ) msk_demod_OVERSAMP (
-//      .clk(clk),
-//      .reset_n(reset_n),
-//      .midpoint_adj(1),
-//      .i_in(i_fir), // bypass loop
-//      .q_in(q_fir),
-//      .iq_val(iq_val),
-//      .data_out(data_OVERSAMP),
-//      .data_val(data_val_OVERSAMP)
-//  );
 
   msk_demod_mdl #(
     .FS     (200.0e6),  
@@ -278,6 +229,8 @@ module msk_tb_mdl_RX;
 
 
   shifter_viewer # (
+    .FDW(FDW),
+    .FIXED_DATA(FIXED_DATA),
     .WIDTH(shifterWid)
   ) shifter_viewer_OVERSAMP (
     .clk        (clk),
@@ -369,7 +322,7 @@ module msk_tb_mdl_RX;
     .clk            (clk),
     .rst            (rst),
     .err_valid      (pdet_err_val),   
-    .phase_err      (pdet_err),   
+    .phase_err      (pdet_err),   // phase detect
     .freq_valid_o   (freq_word_val),   
     .freq_word_o    (freq_word)    
   );
@@ -380,13 +333,45 @@ module msk_tb_mdl_RX;
   ) nco_dds_mdl_inst (
     .clk          (clk),
     .rst          (rst),
-    .freq_word_i  (freq_word),   
-    .phase_word_o (),   
-    .cos_out      (dds_cos),   
+    .freq_word_i  (freq_word),   // from loop filter
+    .phase_word_o (),   // n/c for debug/view
+    .cos_out      (dds_cos),// do derotator
     .sin_out      (dds_sin)    
+  );
+
+//-------------------------------------------------------------------------------------------------
+// carrier recovery
+//-------------------------------------------------------------------------------------------------
+
+
+  msk_slicer_dec_mdl #(
+    .IW (PIW)
+  ) msk_slicer_dec_CFO(
+    .clk          (clk          ),
+    .reset_n      (reset_n      ),
+    .i_sym_i      (derot_i      ),
+    .q_sym_i      (derot_q      ),
+    .sym_valid_i  (derot_val    ),
+    .data_o       (data_CFO     ),
+    .data_valid_o (data_val_CFO )
+  );
+
+//  localparam int FDW = 256;
+//  localparam logic [FDW-1:0] FIXED_DATA = 'h901000000033000000FFFFFFFF010000007700ffff00000001010000ffa50ffe;
+
+  shifter_viewer # (
+    .FDW(FDW),
+    .FIXED_DATA(FIXED_DATA),
+    .WIDTH(shifterWid)
+  ) shifter_viewer_CFO (
+    .clk        (clk),
+    .rst        (!reset_n),
+    .data_i     (data_CFO),
+    .data_val_i (data_val_CFO)
   );
 
 
 endmodule
 
 //  9010_0000_0033_0000_00FF_FFFF_FF01_0000_0077_00ff_ff00_0000_0101_0000_ffa5_0ffe
+//  901000000033000000FFFFFFFF010000007700ffff00000001010000ffa50ffe
