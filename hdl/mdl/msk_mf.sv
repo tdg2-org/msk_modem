@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps  // <time_unit>/<time_precision>
+
 // half_sine_mf_int16_fixed.sv
 // 2‑symbol half‑sine matched filter
 // – external samples: signed 16‑bit
@@ -40,11 +42,14 @@ module msk_mf #(
   real din_r, acc, y;
   int  tmp;
 
+  logic signed [WO-1:0] dout_pre;
+  logic dout_val_pre;
+
   always_ff @(posedge clk) begin
-    dout_val <= din_val;
+    dout_val_pre <= din_val;
 
     if (!din_val) begin
-      dout <= '0;
+      dout_pre <= '0;
     end
     else begin
       // 1) int16 → real
@@ -66,9 +71,27 @@ module msk_mf #(
       else if (y <= -1.0)     tmp = -32768;
       else                    tmp = $rtoi(y * R2I);
 
-      dout <= tmp[WO-1:0];
+      dout_pre <= tmp[WO-1:0];
     end
   end
+
+/* model delay in xilinx IP fir_mf */
+
+  array_shift_delay # (
+    .DELAY_LEN  (26)   ,
+    .DW         (WO)
+  ) array_shift_delay (
+    .clk        (clk)   ,
+    .rst        ('0)   ,
+    .d_in       (dout_pre)   ,
+    .d_in_val   (dout_val_pre)   ,
+    .d_out      (dout)   ,
+    .d_out_val  (dout_val)
+  );
+
+
+
+
 endmodule
 
 /*

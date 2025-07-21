@@ -77,6 +77,8 @@ module mf_tb;
     @(posedge clk);
     iq_val = 1;
     #200ns;
+    
+    /* impulse response */
     @(posedge clk);
     di = 32767;
     dq = 32767;
@@ -85,6 +87,8 @@ module mf_tb;
     dq = 0;
 
     #1300ns;
+  
+    /* step response */
     @(posedge clk);
     di = 32767;
     dq = 32767;

@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps  // <time_unit>/<time_precision>
+
 // Upconversion module: converts I/Q baseband (16-bit) to a real passband signal.
 module duc_ddc_lpf_top #(
     parameter       DUC_EN = 1,
@@ -6,7 +8,7 @@ module duc_ddc_lpf_top #(
     parameter real  FS = 200e6   // Sample rate in Hz.
 )(
     input  logic       clk,
-    input  logic       rstn,
+    input  logic       rst,
     //DDC
     input  logic signed [15:0]  adc_in,  // ADC input (digitized real signal).
     input  logic                adc_val,
@@ -22,7 +24,7 @@ module duc_ddc_lpf_top #(
   logic signed [15:0] dds_tdata;
   
   dds_50 dds_50_inst (
-    .aresetn            (rstn     ),
+    .aresetn            (~rst     ),
     .aclk               (clk      ),  // input wire aclk
     .m_axis_data_tvalid (dds_val  ),  // output wire m_axis_data_tvalid
     .m_axis_data_tdata  (dds_tdata)   // output wire [15 : 0] m_axis_data_tdata
@@ -36,7 +38,7 @@ generate if (DUC_EN) begin : DUC
     .FS(200e6)
   ) duc_inst (
     .clk      (clk      ),
-    .reset    (~rstn    ),
+    .reset    (rst    ),
     .dds_tdata(dds_tdata),
     .I_data   (I_in     ),
     .Q_data   (Q_in     ),
@@ -59,7 +61,7 @@ generate if (DDC_EN) begin : DDC
     .FS(200e6)
   ) ddc_inst (
     .clk      (clk      ),
-    .reset    (~rstn    ),
+    .reset    (rst    ),
     .dds_tdata(dds_tdata),
     .dds_val  (dds_val  ),
     .adc_in   (adc_in   ),
