@@ -47,7 +47,7 @@ module msk_tb_mdl_RX;
 
   file_read_simple #(
     .DATA_WIDTH(16),.CLKLESS(0),.PERIOD_NS(),.DATA_FORMAT("dec"),.FILE_DIR("sim/data/"),
-    .FILE_NAME("adc_data_F1000.0.dat") //adc_5_alt_T30_C0_J000
+    .FILE_NAME("adc_long.dat") //adc_5_alt_T30_C0_J000
   ) file_read_simple_inst0 (
     .rst(~reset_n),.clk(clk),
     .data_out(adc0),
