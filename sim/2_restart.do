@@ -6,5 +6,5 @@ restart
 
 log -r *
 
-run 5us
+run 300us
 

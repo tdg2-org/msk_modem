@@ -1,16 +1,10 @@
 `timescale 1ns / 1ps  // <time_unit>/<time_precision>
 
-// -----------------------------------------------------------------------------
-// PI loop-filter (non-synthesisable model)
-//   • Runs once per symbol when e_valid_i pulses
-//   • Fixed-point gains implemented as right shifts
-//   • ctrl_o drives the phase-accumulator (same 18-bit scale as Gardner e_out_o)
-// -----------------------------------------------------------------------------
-module pi_loop_filter_mdl #
+module pi_loop_filter #
 (
   parameter int WERR        = 18,  // width of e_in_i and ctrl_o
-  parameter int KP_SHIFT    = 6,   //7 Kp = 2^-KP_SHIFT   5
-  parameter int KI_SHIFT    = 10,  //11 Ki = 2^-KI_SHIFT  10
+  parameter int KP_SHIFT    = 7,   // Kp = 2^-KP_SHIFT
+  parameter int KI_SHIFT    = 11,  // Ki = 2^-KI_SHIFT
   parameter int ACC_WIDTH   = 24   // integrator register width
 )
 (

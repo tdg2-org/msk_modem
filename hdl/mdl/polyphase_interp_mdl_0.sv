@@ -14,7 +14,7 @@
 //     – Delay-line implemented as simple packed array (non-synth)
 //     – mu_i is unused in the polyphase version but kept for pin-compatibility
 // -----------------------------------------------------------------------------
-module polyphase_interp_mdl #
+module polyphase_interp_mdl_0 #
 (
   parameter int OSF        = 20,  // polyphase branches
   parameter int TAPS_PPH   = 5 ,  // taps per branch
@@ -100,8 +100,8 @@ module polyphase_interp_mdl #
 
   //assign i_sym_o      = acc_i[28:11];
   //assign q_sym_o      = acc_q[28:11];
-  assign i_sym_o      = acc_i;// >>> 15;
-  assign q_sym_o      = acc_q;// >>> 15;
+  assign i_sym_o      = acc_i;// >>> 15;    16'sd2571, 16'sd7649, 16'sd12567, 16'sd17133, 16'sd21283, 16'sd24954, 16'sd28080, 16'sd30272, 16'sd31480, 16'sd31988,
+  assign q_sym_o      = acc_q;// >>> 15;    16'sd31988, 16'sd31480, 16'sd30272, 16'sd28080, 16'sd24954, 16'sd21283, 16'sd17133, 16'sd12567, 16'sd7649, 16'sd2571};
   
 
 
@@ -113,12 +113,12 @@ endmodule
 
 /* instantiation template ------------------------------------------------------
 
-polyphase_interp_mdl #(
+polyphase_interp_mdl_0 #(
   .OSF       (20),
   .TAPS_PPH  (5 ),
   .WIQ       (16),
   .WO        (18)
-) polyphase_interp_inst (
+) polyphase_interp_0 (
   .clk           (),
   .rst           (),
   .i_raw_i       (),
@@ -132,3 +132,6 @@ polyphase_interp_mdl #(
 );
 
 */
+
+
+// 2571, 7649, 12567, 17133, 21283, 24954, 28080, 30272, 31480, 31988, 31988, 31480, 30272, 28080, 24954, 21283, 17133, 12567, 7649, 2571

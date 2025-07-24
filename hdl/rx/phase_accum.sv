@@ -6,7 +6,7 @@
 //   • Adds ctrl_i (scaled) to fine-tune the step
 //   • When INTEGER field ≥ OSF (20) it wraps and emits sym_valid_o = 1
 // -----------------------------------------------------------------------------
-module phase_accum_mdl #
+module phase_accum #
 (
   parameter int OSF        = 20,   // samples per symbol
   parameter int CTRL_W     = 18,   // ctrl_i width (LSB = 2-12 symbol)
@@ -16,12 +16,11 @@ module phase_accum_mdl #
 (
   input   logic                     clk,
   input   logic                     reset_n,
-  input   logic signed [CTRL_W-1:0] ctrl_i,         // timing correction
+  input   logic signed [CTRL_W-1:0] ctrl_i,        // timing correction
   input   logic                     ctrl_val_i,
-  output  logic                     sym_valid_o,    // 1-cycle pulse / symbol
-  output  logic [INT_W-1:0]         phase_int_o,    // 0 … 19
-  output  logic [FRAC_W-1:0]        mu_o,           // Q0.27
-  output  logic                     phase_val_o     // phase/mu valid
+  output  logic                     sym_valid_o,   // 1-cycle pulse / symbol
+  output  logic [INT_W-1:0]         phase_int_o,   // 0 … 19
+  output  logic [FRAC_W-1:0]        mu_o           // Q0.27
 );
 
   // ---------------- constants & types ----------------------------------------
@@ -34,12 +33,8 @@ module phase_accum_mdl #
 
   logic signed [PHASE_W:0] ctrl_ext;
   logic [PHASE_W:0] phi_next;
-  logic wrap, sym_val, phase_val;
+  logic wrap, sym_val;
 
-  always_ff @(posedge clk) begin
-    if (!reset_n)         phase_val <= '0;
-    else if (ctrl_val_i)  phase_val <= '1;
-  end
 
   always_ff @(posedge clk) begin
     if (!reset_n) begin
@@ -70,7 +65,7 @@ module phase_accum_mdl #
   assign phase_int_o = phi[PHASE_W-1:FRAC_W];   // coarse 0…19
   assign mu_o        = phi[FRAC_W-1:0];         // fractional part (Q0.27)
   assign sym_valid_o = sym_val;
-  assign phase_val_o = phase_val;
+
 
 //-------------------------------------------------------------------------------------------------
 // debug
@@ -108,8 +103,7 @@ phase_accum_mdl #(
   .ctrl_i       (),
   .sym_valid_o  (),
   .phase_int_o  (),
-  .mu_o         (),
-  .phase_val_o  ()
+  .mu_o         ()
 );
 
 */

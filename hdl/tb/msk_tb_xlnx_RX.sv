@@ -157,30 +157,60 @@ module msk_tb_xlnx_RX;
   logic         [FRAC_W-1:0]  mu;
 
 
-  gardner_ted_mdl #(
+//  gardner_ted_mdl #(
+//    .RAW_DLY  (5), // adjusted here to 5 to stabilize coarse CFO. need repeat data sequence of "0011" / "00001111" 
+//    .OSF      (20),
+//    .WI       (16),
+//    .WO       (18)
+//  ) gardner_ted_MDL (
+//    .clk          (clk          ),
+//    .reset_n      (reset_n      ),
+//    .i_in         (mf_I         ),
+//    .q_in         (mf_Q         ),
+//    .iq_val       (mf_val       ),
+//    .sym_valid_i  (sym_val      ),
+//    .e_out_o      (),
+//    .e_valid_o    (),
+//    .i_raw_delay_o(),
+//    .q_raw_delay_o()
+//  );
+
+  gardner_ted #(
     .RAW_DLY  (5), // adjusted here to 5 to stabilize coarse CFO. need repeat data sequence of "0011" / "00001111" 
     .OSF      (20),
     .WI       (16),
     .WO       (18)
-  ) gardner_ted_MDL (
-    .clk          (clk      ),
-    .reset_n      (reset_n  ),
-    .i_in         (mf_I     ),
-    .q_in         (mf_Q     ),
-    .iq_val       (mf_val   ),
-    .sym_valid_i  (sym_val  ),
-    .e_out_o      (ek       ),
-    .e_valid_o    (ek_val   ),
-    .i_raw_delay_o(i_raw_delay),
-    .q_raw_delay_o(q_raw_delay)
+  ) gardner_ted_SYN (
+    .clk          (clk          ),
+    .reset_n      (reset_n      ),
+    .i_in         (mf_I         ),
+    .q_in         (mf_Q         ),
+    .iq_val       (mf_val       ),
+    .sym_valid_i  (sym_val      ),
+    .e_out_o      (ek           ),
+    .e_valid_o    (ek_val       ),
+    .i_raw_delay_o(i_raw_delay  ),
+    .q_raw_delay_o(q_raw_delay  )
   );
 
-  pi_loop_filter_mdl #(
+
+//  pi_loop_filter_mdl #(
+//    .WERR      (WERR),
+//    .ACC_WIDTH (24)
+//  ) pi_loop_filter_MDL (
+//    .clk        (clk          ),
+//    .reset_n    (reset_n      ),
+//    .e_in_i     (ek           ),
+//    .e_valid_i  (ek_val       ),
+//    .ctrl_o     (      ),
+//    .ctrl_val_o (  )
+//  );
+
+
+  pi_loop_filter #(
     .WERR      (WERR),
-//    .KP_SHIFT  (7 ),
-//    .KI_SHIFT  (12),
     .ACC_WIDTH (24)
-  ) pi_loop_filter_MDL (
+  ) pi_loop_filter_SYN (
     .clk        (clk          ),
     .reset_n    (reset_n      ),
     .e_in_i     (ek           ),
@@ -190,12 +220,27 @@ module msk_tb_xlnx_RX;
   );
 
 
-  phase_accum_mdl #(
+//  phase_accum_mdl #(
+//    .OSF       (20),
+//    .CTRL_W    (WERR),
+//    .INT_W     (INT_W ),
+//    .FRAC_W    (FRAC_W)
+//  ) phase_accum_MDL (
+//    .clk          (clk        ),
+//    .reset_n      (reset_n    ),
+//    .ctrl_i       (lf_ctrl    ),
+//    .ctrl_val_i   (lf_ctrl_val),
+//    .sym_valid_o  (  ),
+//    .phase_int_o  (  ),
+//    .mu_o         (  )
+//  );
+
+  phase_accum #(
     .OSF       (20),
     .CTRL_W    (WERR),
     .INT_W     (INT_W ),
     .FRAC_W    (FRAC_W)
-  ) phase_accum_MDL (
+  ) phase_accum_SYN (
     .clk          (clk        ),
     .reset_n      (reset_n    ),
     .ctrl_i       (lf_ctrl    ),
@@ -204,6 +249,7 @@ module msk_tb_xlnx_RX;
     .phase_int_o  (phase_int  ),
     .mu_o         (mu         )
   );
+
 
 //-------------------------------------------------------------------------------------------------
 // new interp mdl

@@ -47,7 +47,7 @@ module msk_tb_mdl_RX;
 
   file_read_simple #(
     .DATA_WIDTH(16),.CLKLESS(0),.PERIOD_NS(),.DATA_FORMAT("dec"),.FILE_DIR("sim/data/"),
-    .FILE_NAME("adc_data_F1000.0.dat") //adc_5_alt_T30_C0_J000
+    .FILE_NAME("adc_data_nominal.dat") //adc_5_alt_T30_C0_J000
   ) file_read_simple_inst0 (
     .rst(~reset_n),.clk(clk),
     .data_out(adc0),
@@ -155,7 +155,8 @@ module msk_tb_mdl_RX;
     .ctrl_val_i   (lf_ctrl_val),
     .sym_valid_o  (sym_val    ),
     .phase_int_o  (phase_int  ),
-    .mu_o         (mu         )
+    .mu_o         (mu         ),
+    .phase_val_o  (phase_val  )
   );
 
 //-------------------------------------------------------------------------------------------------
@@ -170,6 +171,26 @@ module msk_tb_mdl_RX;
     .WIQ       (WIQ),
     .WO        (PIW)
   ) polyphase_interp_NEW (
+    .clk          (clk            ),
+    .rst          (rst            ),
+    .i_raw_i      (i_raw_delay    ),
+    .q_raw_i      (q_raw_delay    ),
+    .iq_raw_val_i (iq_val         ), 
+    .phase_int_i  (phase_int      ),
+    .mu_i         (mu             ),
+    .phase_val_i  (phase_val      ),
+    .sym_valid_i  (sym_val        ),
+    .i_sym_o      (i_sym_interp   ),
+    .q_sym_o      (q_sym_interp   ),
+    .sym_valid_o  (sym_val_interp )
+  );
+
+  polyphase_interp_mdl_0 #(
+    .OSF       (20),
+    .TAPS_PPH  (INT_W ),
+    .WIQ       (WIQ),
+    .WO        (PIW)
+  ) polyphase_interp_OLD (
     .clk          (clk        ),
     .rst          (rst        ),
     .i_raw_i      (i_raw_delay),
@@ -178,21 +199,22 @@ module msk_tb_mdl_RX;
     .phase_int_i  (phase_int  ),
     .mu_i         (mu         ),
     .sym_valid_i  (sym_val    ),
-    .i_sym_o      (i_sym_interp  ),
-    .q_sym_o      (q_sym_interp  ),
-    .sym_valid_o  (sym_val_interp)
+    .i_sym_o      (  ),
+    .q_sym_o      (  ),
+    .sym_valid_o  ()
   );
+
 
   msk_slicer_dec_mdl #(
     .IW (PIW)
   ) msk_slicer_dec_NEW (
-    .clk          (clk          ),
-    .reset_n      (reset_n      ),
-    .i_sym_i      (i_sym_interp ),
-    .q_sym_i      (q_sym_interp ),
-    .sym_valid_i  (sym_val_interp  ),
-    .data_o       (data_NEW     ),
-    .data_valid_o (data_val_NEW )
+    .clk          (clk            ),
+    .reset_n      (reset_n        ),
+    .i_sym_i      (i_sym_interp   ),
+    .q_sym_i      (q_sym_interp   ),
+    .sym_valid_i  (sym_val_interp ),
+    .data_o       (data_NEW       ),
+    .data_valid_o (data_val_NEW   )
   );
 
   localparam shifterWid = 128;
@@ -285,7 +307,7 @@ module msk_tb_mdl_RX;
   ) derotator_mdl_inst (
     .clk            (clk),
     .rst            (rst),            
-    .sym_valid_in   (sym_val_interp && cfo_en), 
+    .sym_valid_in   (sym_val_interp), 
     .din_i          (i_sym_interp),
     .din_q          (q_sym_interp),
     .cos_in         (dds_cos),
@@ -304,7 +326,7 @@ module msk_tb_mdl_RX;
   ) phase_detector_mdl_inst (
     .clk        (clk),
     .rst        (rst),
-    .sym_valid  (derot_val && cfo_en),
+    .sym_valid  (derot_val),
     .din_i      (derot_i),
     .din_q      (derot_q),
     .err_valid  (pdet_err_val),

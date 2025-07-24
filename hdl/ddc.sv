@@ -20,8 +20,8 @@ module ddc #(
   logic signed [47:0]  mix_I, mix_Q;
   logic dsp_ce;
 
-  assign dds_sin = signed'({dds_tdata[15:8]});
-  assign dds_cos = signed'({dds_tdata[7:0]});
+  assign dds_sin    = signed'({dds_tdata[15:8]});
+  assign dds_cos    = signed'({dds_tdata[7:0]});
   assign adc_in_ext = signed'({adc_in});
 
   // this is only intended for startup, after reset. dont start until both dds and adc data

@@ -75,11 +75,13 @@ module msk_mf #(
     end
   end
 
+  //assign dout     = dout_pre;
+  //assign dout_val = dout_val_pre;
+
 /* model delay in xilinx IP fir_mf */
 
   array_shift_delay # (
-    .DELAY_LEN  (26)   ,
-    .DW         (WO)
+    .LEN(26), .DW(WO)
   ) array_shift_delay (
     .clk        (clk)   ,
     .rst        ('0)   ,

@@ -1,4 +1,7 @@
 
+// DSP latency issue check ...?
+// I*cos - (Q*sin) --> (Q*sin) is previous...
+
 module duc #(
     parameter real IF = 50e6,   // Intermediate frequency in Hz.
     parameter real FS = 200e6   // Sample rate in Hz.
@@ -35,7 +38,7 @@ module duc #(
     .CE   ('1       ),
     .A    (i_ext    ),
     .B    (dds_cos  ),
-    .C    (QxSIN    ),
+    .C    (QxSIN    ), // is this delay an issue? output of DSP above...
     .P    (duc_data )
   );
 

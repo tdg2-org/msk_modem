@@ -1,12 +1,6 @@
 `timescale 1ns / 1ps  // <time_unit>/<time_precision>
 
-// this module will delay e_out by 1 clock w/respect to I/Q raw (i_in)
-// PI loop filter will delay ctrl by 1 clock w/respect to I/Q raw (i_in)
-// 
-// -----------------------------------------------------------------------------
-// Gardner TED – non-synthesizable model  (21-deep buffer, true −20 tap)
-// -----------------------------------------------------------------------------
-module gardner_ted_mdl #
+module gardner_ted #
 (
   parameter int RAW_DLY = 20,
   parameter int OSF     = 20,   // samples / symbol
@@ -16,19 +10,12 @@ module gardner_ted_mdl #
 (
   input  logic                    clk,
   input  logic                    reset_n,
-
-  // 200-MHz I/Q from interpolator delay-line input
-  input  logic signed [WI-1:0]   i_in,
-  input  logic signed [WI-1:0]   q_in,
+  input  logic signed [WI-1:0]    i_in,
+  input  logic signed [WI-1:0]    q_in,
   input                           iq_val,
-
-  // one-symbol strobe from phase-accumulator
   input  logic                    sym_valid_i,
-
-  // Gardner error output
   output logic signed [WO-1:0]    e_out_o,
   output logic                    e_valid_o,
-
   output  logic signed [WI-1:0]   i_raw_delay_o,
   output  logic signed [WI-1:0]   q_raw_delay_o
 );
@@ -68,51 +55,68 @@ module gardner_ted_mdl #
 
   localparam int ERR_WID = 18;
   localparam int SHIFT = (WI + $clog2(OSF)) - WO;
-  logic signed [ERR_WID-1:0] err, e_out_pre;//  = '{default:'0};
-  //assign err = ((Ih * dI) + (Qh * dQ)) >>> (SHIFT);
+  logic signed [ERR_WID-1:0] err, e_out_pre, dsp_Ih, dsp_dI, dsp_Qh, dsp_dQ;
 
-  logic signed [2*WI+1:0] err_long;
-  assign err_long = ((Ih * dI) + (Qh * dQ)) >>> (SHIFT);
+  assign dsp_Ih = signed'({Ih});
+  assign dsp_dI = signed'({dI});
+  assign dsp_Qh = signed'({Qh});
+  assign dsp_dQ = signed'({dQ});
+
+  logic signed [47:0] dsp_I_prod, dsp_Q_prod, iq_sum, err_long;
+
+  dsp_macro_AxBmC dsp_I ( // dsp_mix
+    .CLK  (clk        ),
+    .CE   (iq_val     ),
+    .SEL  ('1         ),  // A*B+C 
+    .A    (dsp_Ih), // in [17:0]
+    .B    (dsp_dI), // in [17:0]
+    .C    ('0   ), // in [17:0]
+    .P    (dsp_I_prod)  // out [47:0]
+  );
+
+  dsp_macro_AxBmC dsp_Q ( // dsp_mix
+    .CLK  (clk        ),
+    .CE   (iq_val     ),
+    .SEL  ('1         ),  // A*B+C 
+    .A    (dsp_Qh), // in [17:0]
+    .B    (dsp_dQ), // in [17:0]
+    .C    ('0   ),  // in [17:0]
+    .P    (dsp_Q_prod)  // out [47:0]
+  );
+
+  assign iq_sum = (dsp_I_prod + dsp_Q_prod);
+  assign err_long = iq_sum >>> SHIFT;
   assign err = err_long[2*WI+1:16];
-  
+
   logic e_valid_pre;
 
   always_ff @(posedge clk) begin
-    e_valid_o <= '0;
-    //e_valid_pre <= '0;
+    e_valid_pre <= '0;
     if (sym_valid_i && array_full && iq_val) begin // wait til array is full after reset
-      e_out_o <= err;
-      e_valid_o <= '1;
-      //e_out_pre <= err;
-      //e_valid_pre <= '1;
+      e_out_pre <= err;
+      e_valid_pre <= '1;
     end 
   end
 
   //assign e_out_o   = e_out_pre;
   //assign e_valid_o = e_valid_pre;
 
+  localparam int DSP_DELAY = 4;
+
+  array_shift_delay # (
+    .LEN(DSP_DELAY), .DW(ERR_WID)
+  ) array_shift_delay (
+    .clk(clk), .rst(rst),
+    .d_in     (e_out_pre),
+    .d_in_val (e_valid_pre),
+    .d_out    (e_out_o),
+    .d_out_val(e_valid_o)
+  );
+
   // processing delay in timing recover loop to align samples for interpolator
-  assign i_raw_delay_o = array_i[RAW_DLY];
-  assign q_raw_delay_o = array_q[RAW_DLY];
+  assign i_raw_delay_o = array_i[RAW_DLY + DSP_DELAY];
+  assign q_raw_delay_o = array_q[RAW_DLY + DSP_DELAY];
 
-
-//-------------------------------------------------------------------------------------------------
-// add DSP48 delay to model, 4clk
-//-------------------------------------------------------------------------------------------------
-//  localparam int DSP_DELAY = 4;
-//
-//  array_shift_delay # (
-//    .LEN(DSP_DELAY), .DW(ERR_WID)
-//  ) array_shift_delay (
-//    .clk(clk), .rst(rst),
-//    .d_in     (e_out_pre),
-//    .d_in_val (e_valid_pre),
-//    .d_out    (e_out_o),
-//    .d_out_val(e_valid_o)
-//  );
-//
-//  assign i_raw_delay_o = array_i[RAW_DLY + DSP_DELAY];
-//  assign q_raw_delay_o = array_q[RAW_DLY + DSP_DELAY];
 
 endmodule
 

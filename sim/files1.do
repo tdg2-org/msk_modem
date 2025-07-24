@@ -7,6 +7,7 @@ set mskDir ../hdl
 set mskFiles { \
   mdl/lpf_fixed_mdl.sv \
   mdl/polyphase_interp_mdl.sv \
+  mdl/polyphase_interp_mdl_0.sv \
   mdl/ddc_lpf_mdl.sv \
   mdl/gardner_ted_mdl.sv \
   mdl/loop_filter_mdl.sv \
@@ -35,6 +36,7 @@ set comFiles {\
   tb/file_read_simple.sv \
   shifter_viewer.sv \
   variable_strobe.sv \
+  array_shift_delay.sv \
 }
 
 foreach x $comFiles {
