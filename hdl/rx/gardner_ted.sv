@@ -85,33 +85,38 @@ module gardner_ted #
   );
 
   assign iq_sum = (dsp_I_prod + dsp_Q_prod);
-  assign err_long = iq_sum >>> SHIFT;
+  assign err_long = iq_sum >>> (SHIFT);
   assign err = err_long[2*WI+1:16];
 
   logic e_valid_pre;
 
-  always_ff @(posedge clk) begin
-    e_valid_pre <= '0;
-    if (sym_valid_i && array_full && iq_val) begin // wait til array is full after reset
-      e_out_pre <= err;
-      e_valid_pre <= '1;
-    end 
-  end
-
-  //assign e_out_o   = e_out_pre;
-  //assign e_valid_o = e_valid_pre;
 
   localparam int DSP_DELAY = 4;
 
-  array_shift_delay # (
-    .LEN(DSP_DELAY), .DW(ERR_WID)
-  ) array_shift_delay (
-    .clk(clk), .rst(rst),
-    .d_in     (e_out_pre),
-    .d_in_val (e_valid_pre),
-    .d_out    (e_out_o),
-    .d_out_val(e_valid_o)
-  );
+  logic [DSP_DELAY-1:0] sym_val_sr = '0;
+
+  always_ff @(posedge clk) begin
+    sym_val_sr <= {sym_val_sr[DSP_DELAY-1:0],sym_valid_i};
+    
+    if (sym_val_sr[DSP_DELAY-1] && array_full && iq_val) begin // wait til array is full after reset
+      e_out_pre <= err;
+      e_valid_pre <= '1;
+    end else e_valid_pre <= '0;
+  end
+
+  assign e_out_o   = e_out_pre;
+  assign e_valid_o = e_valid_pre;
+
+
+//  array_shift_delay # (
+//    .LEN(DSP_DELAY), .DW(ERR_WID)
+//  ) array_shift_delay (
+//    .clk(clk), .rst(rst),
+//    .d_in     (e_out_pre),
+//    .d_in_val (e_valid_pre),
+//    .d_out    (e_out_o),
+//    .d_out_val(e_valid_o)
+//  );
 
   // processing delay in timing recover loop to align samples for interpolator
   assign i_raw_delay_o = array_i[RAW_DLY + DSP_DELAY];

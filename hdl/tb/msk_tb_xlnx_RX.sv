@@ -47,7 +47,7 @@ module msk_tb_xlnx_RX;
 
   file_read_simple #(
     .DATA_WIDTH(16),.CLKLESS(0),.PERIOD_NS(),.DATA_FORMAT("dec"),.FILE_DIR("sim/data/"),
-    .FILE_NAME("adc_data_F1000.0.dat") //adc_5_alt_T30_C0_J000
+    .FILE_NAME("adc_data_nominal.dat") //adc_5_alt_T30_C0_J000
   ) file_read_simple (
     .rst(~reset_n),.clk(clk),
     .data_out(adc0),
@@ -157,23 +157,23 @@ module msk_tb_xlnx_RX;
   logic         [FRAC_W-1:0]  mu;
 
 
-//  gardner_ted_mdl #(
-//    .RAW_DLY  (5), // adjusted here to 5 to stabilize coarse CFO. need repeat data sequence of "0011" / "00001111" 
-//    .OSF      (20),
-//    .WI       (16),
-//    .WO       (18)
-//  ) gardner_ted_MDL (
-//    .clk          (clk          ),
-//    .reset_n      (reset_n      ),
-//    .i_in         (mf_I         ),
-//    .q_in         (mf_Q         ),
-//    .iq_val       (mf_val       ),
-//    .sym_valid_i  (sym_val      ),
-//    .e_out_o      (),
-//    .e_valid_o    (),
-//    .i_raw_delay_o(),
-//    .q_raw_delay_o()
-//  );
+  gardner_ted_mdl #(
+    .RAW_DLY  (5), // adjusted here to 5 to stabilize coarse CFO. need repeat data sequence of "0011" / "00001111" 
+    .OSF      (20),
+    .WI       (16),
+    .WO       (18)
+  ) gardner_ted_MDL (
+    .clk          (clk          ),
+    .reset_n      (reset_n      ),
+    .i_in         (mf_I         ),
+    .q_in         (mf_Q         ),
+    .iq_val       (mf_val       ),
+    .sym_valid_i  (sym_val      ),
+    .e_out_o      (),
+    .e_valid_o    (),
+    .i_raw_delay_o(),
+    .q_raw_delay_o()
+  );
 
   gardner_ted #(
     .RAW_DLY  (5), // adjusted here to 5 to stabilize coarse CFO. need repeat data sequence of "0011" / "00001111" 
@@ -208,6 +208,8 @@ module msk_tb_xlnx_RX;
 
 
   pi_loop_filter #(
+    .KP_SHIFT  (7 ),
+    .KI_SHIFT  (11),
     .WERR      (WERR),
     .ACC_WIDTH (24)
   ) pi_loop_filter_SYN (
@@ -247,7 +249,8 @@ module msk_tb_xlnx_RX;
     .ctrl_val_i   (lf_ctrl_val),
     .sym_valid_o  (sym_val    ),
     .phase_int_o  (phase_int  ),
-    .mu_o         (mu         )
+    .mu_o         (mu         ),
+    .phase_val_o  (phase_val  )
   );
 
 
@@ -263,17 +266,18 @@ module msk_tb_xlnx_RX;
     .WIQ       (WIQ),
     .WO        (PIW)
   ) polyphase_interp_MDL (
-    .clk          (clk        ),
-    .rst          (rst        ),
-    .i_raw_i      (i_raw_delay),
-    .q_raw_i      (q_raw_delay),
-    .iq_raw_val_i (iq_val     ), 
-    .phase_int_i  (phase_int  ),
-    .mu_i         (mu         ),
-    .sym_valid_i  (sym_val    ),
-    .i_sym_o      (i_sym_interp  ),
-    .q_sym_o      (q_sym_interp  ),
-    .sym_valid_o  (sym_val_interp)
+    .clk          (clk            ),
+    .rst          (rst            ),
+    .i_raw_i      (i_raw_delay    ),
+    .q_raw_i      (q_raw_delay    ),
+    .iq_raw_val_i (iq_val         ), 
+    .phase_int_i  (phase_int      ),
+    .mu_i         (mu             ),
+    .phase_val_i  (phase_val      ),
+    .sym_valid_i  (sym_val        ),
+    .i_sym_o      (i_sym_interp   ),
+    .q_sym_o      (q_sym_interp   ),
+    .sym_valid_o  (sym_val_interp )
   );
 
   msk_slicer_dec_mdl #(
@@ -431,6 +435,22 @@ module msk_tb_xlnx_RX;
     .data_i     (data_CFO),
     .data_val_i (data_val_CFO)
   );
+
+//-------------------------------------------------------------------------------------------------
+// debug
+//-------------------------------------------------------------------------------------------------
+  logic spy_match,spy_match2;
+
+  always_ff @( posedge clk ) begin
+    //if ((msk_tb_xlnx_RX.gardner_ted_MDL.mId == msk_tb_xlnx_RX.gardner_ted_SYN.dsp_I_prod) && (msk_tb_xlnx_RX.gardner_ted_MDL.mQd == msk_tb_xlnx_RX.gardner_ted_SYN.dsp_Q_prod))
+    //if (msk_tb_xlnx_RX.gardner_ted_MDL.err_long2 == msk_tb_xlnx_RX.gardner_ted_SYN.iq_sum)
+    if (msk_tb_xlnx_RX.gardner_ted_MDL.err_long3 == msk_tb_xlnx_RX.gardner_ted_SYN.err_long)
+      spy_match = '1;
+    else spy_match = '0;
+    if (msk_tb_xlnx_RX.gardner_ted_MDL.err3 == msk_tb_xlnx_RX.gardner_ted_SYN.err)
+      spy_match2 = '1;
+    else spy_match2 = '0;
+  end
 
 
 endmodule

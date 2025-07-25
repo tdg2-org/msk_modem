@@ -18,8 +18,8 @@ module gardner_ted_mdl #
   input  logic                    reset_n,
 
   // 200-MHz I/Q from interpolator delay-line input
-  input  logic signed [WI-1:0]   i_in,
-  input  logic signed [WI-1:0]   q_in,
+  input  logic signed [WI-1:0]    i_in,
+  input  logic signed [WI-1:0]    q_in,
   input                           iq_val,
 
   // one-symbol strobe from phase-accumulator
@@ -68,23 +68,28 @@ module gardner_ted_mdl #
 
   localparam int ERR_WID = 18;
   localparam int SHIFT = (WI + $clog2(OSF)) - WO;
-  logic signed [ERR_WID-1:0] err, e_out_pre;//  = '{default:'0};
+  logic signed [ERR_WID-1:0] err,err3, e_out_pre;//  = '{default:'0};
   //assign err = ((Ih * dI) + (Qh * dQ)) >>> (SHIFT);
 
-  logic signed [2*WI+1:0] err_long;
+  (* keep = "true" *) logic signed [2*WI+1:0] err_long, multI, multQ, err_long2,err_long3, mQd, mId;
+  assign multI = (Ih * dI);
+  assign multQ = (Qh * dQ);
+  array_shift_delay_simple # (.LEN(4),.DW(34)) array_shift_delay_simpleI (clk,multI,mId);
+  array_shift_delay_simple # (.LEN(4),.DW(34)) array_shift_delay_simpleQ (clk,multQ,mQd);  
+  assign err_long2 = (mId + mQd);
+  assign err_long3 = err_long2 >>> SHIFT;
+  assign err3 = err_long3[2*WI+1:16];
+
   assign err_long = ((Ih * dI) + (Qh * dQ)) >>> (SHIFT);
   assign err = err_long[2*WI+1:16];
   
   logic e_valid_pre;
 
   always_ff @(posedge clk) begin
-    e_valid_o <= '0;
-    //e_valid_pre <= '0;
+    e_valid_pre <= '0;
     if (sym_valid_i && array_full && iq_val) begin // wait til array is full after reset
-      e_out_o <= err;
-      e_valid_o <= '1;
-      //e_out_pre <= err;
-      //e_valid_pre <= '1;
+      e_out_pre <= err;
+      e_valid_pre <= '1;
     end 
   end
 
@@ -92,27 +97,27 @@ module gardner_ted_mdl #
   //assign e_valid_o = e_valid_pre;
 
   // processing delay in timing recover loop to align samples for interpolator
-  assign i_raw_delay_o = array_i[RAW_DLY];
-  assign q_raw_delay_o = array_q[RAW_DLY];
+  //assign i_raw_delay_o = array_i[RAW_DLY];
+  //assign q_raw_delay_o = array_q[RAW_DLY];
 
 
 //-------------------------------------------------------------------------------------------------
 // add DSP48 delay to model, 4clk
 //-------------------------------------------------------------------------------------------------
-//  localparam int DSP_DELAY = 4;
-//
-//  array_shift_delay # (
-//    .LEN(DSP_DELAY), .DW(ERR_WID)
-//  ) array_shift_delay (
-//    .clk(clk), .rst(rst),
-//    .d_in     (e_out_pre),
-//    .d_in_val (e_valid_pre),
-//    .d_out    (e_out_o),
-//    .d_out_val(e_valid_o)
-//  );
-//
-//  assign i_raw_delay_o = array_i[RAW_DLY + DSP_DELAY];
-//  assign q_raw_delay_o = array_q[RAW_DLY + DSP_DELAY];
+  localparam int DSP_DELAY = 4;
+
+  array_shift_delay # (
+    .LEN(DSP_DELAY), .DW(ERR_WID)
+  ) array_shift_delay (
+    .clk(clk), .rst(rst),
+    .d_in     (e_out_pre),
+    .d_in_val (e_valid_pre),
+    .d_out    (e_out_o),
+    .d_out_val(e_valid_o)
+  );
+
+  assign i_raw_delay_o = array_i[RAW_DLY + DSP_DELAY];
+  assign q_raw_delay_o = array_q[RAW_DLY + DSP_DELAY];
 
 endmodule
 
