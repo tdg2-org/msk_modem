@@ -1,8 +1,8 @@
 `timescale 1ns / 1ps  // <time_unit>/<time_precision>
 // ------------------------------------------------------------
-// Derotator model (non‑synthesizable, uses external DDS)
-//   • I/Q  : Q1.(WIDTH‑1)
-//   • Cos/Sin : Q1.(DDS_WIDTH‑1)
+// I_derot = (I * cos) + (Q * sin)
+// Q_derot = (Q * cos) - (I * sin)
+// 
 // ------------------------------------------------------------
 module derotator #(
   parameter int WIDTH        = 16,
@@ -21,45 +21,77 @@ module derotator #(
   output logic signed [WIDTH-1:0]        dout_q
 );
 
-  //––– scaling factors ––––––––––––––––––––––––––––––––––––––
-  localparam int  MAX_IQ   = (1 << (WIDTH-1)) - 1;
-  localparam int  MIN_IQ   = -(1 << (WIDTH-1));
-  localparam real IQ_SCALE = 1.0 / (1 << (WIDTH-1));      // int  → real
-  localparam real IQ_ISCL  = (1 << (WIDTH-1));            // real → int
-  localparam real AMP_SCALE = 1.0 / (1 << (DDS_WIDTH-1)); // cos/sin int → real
+  localparam int DSP_IWID = 18;
+  localparam int DSP_OWID = 48;
+  logic signed [DSP_IWID-1:0] dspI,dspQ,dspCos,dspSin;
+  logic signed [DSP_OWID-1:0] mult_Icos,mult_Qsin,mult_Isin,mult_Qcos;
+  logic signed [DSP_OWID:0]   i_derot_pre, q_derot_pre;
 
-  //––– combinational derotation –––––––––––––––––––––––––––––
+  assign dspI   = signed'({din_i});
+  assign dspQ   = signed'({din_q});
+  assign dspCos = signed'({cos_in});
+  assign dspSin = signed'({sin_in});
 
-  real  ri,rq,cosr,sinr,ro_i,ro_q;
-  int   tmp_i,tmp_q;
+  //dsp_mix. sel = 0: A*B-C, sel = 1: A*B+C
+  dsp_mix dsp_Icos ( // dsp_mix
+    .CLK  (clk          ),
+    .CE   (sym_valid_in ),
+    .SEL  ('1           ),  // A*B+C 
+    .A    (dspI         ), // in [17:0]
+    .B    (dspCos       ), // in [17:0]
+    .C    ('0           ), // in [17:0]
+    .P    (mult_Icos    )  // out [47:0]
+  );
 
-  always_comb begin
-    // int → real
-    ri   = $itor(din_i) * IQ_SCALE;
-    rq   = $itor(din_q) * IQ_SCALE;
-    cosr = $itor(cos_in) * AMP_SCALE;
-    sinr = $itor(sin_in) * AMP_SCALE;
+  dsp_mix dsp_Qsin ( // dsp_mix
+    .CLK  (clk          ),
+    .CE   (sym_valid_in ),
+    .SEL  ('1           ),  // A*B+C 
+    .A    (dspQ         ), // in [17:0]
+    .B    (dspSin       ), // in [17:0]
+    .C    ('0           ),  // in [17:0]
+    .P    (mult_Qsin    )  // out [47:0]
+  );
 
-    // complex multiply by e^(‑jθ)
-    ro_i =  ri * cosr + rq * sinr;
-    ro_q = -ri * sinr + rq * cosr;
+  dsp_mix dsp_Isin ( // dsp_mix
+    .CLK  (clk          ),
+    .CE   (sym_valid_in ),
+    .SEL  ('1           ),  // A*B+C 
+    .A    (dspI         ), // in [17:0]
+    .B    (dspSin       ), // in [17:0]
+    .C    ('0           ), // in [17:0]
+    .P    (mult_Isin    )  // out [47:0]
+  );
 
-    // real → int with rounding
-    tmp_i = $rtoi(ro_i * IQ_ISCL);
-    tmp_q = $rtoi(ro_q * IQ_ISCL);
+  dsp_mix dsp_Qcos ( // dsp_mix
+    .CLK  (clk          ),
+    .CE   (sym_valid_in ),
+    .SEL  ('1           ),  // A*B+C 
+    .A    (dspQ         ), // in [17:0]
+    .B    (dspCos       ), // in [17:0]
+    .C    ('0           ),  // in [17:0]
+    .P    (mult_Qcos    )  // out [47:0]
+  );
 
-    // saturate to WIDTH bits
-    if (tmp_i > MAX_IQ) tmp_i = MAX_IQ;
-    if (tmp_i < MIN_IQ) tmp_i = MIN_IQ;
-    if (tmp_q > MAX_IQ) tmp_q = MAX_IQ;
-    if (tmp_q < MIN_IQ) tmp_q = MIN_IQ;
 
-    dout_i = tmp_i;
-    dout_q = tmp_q;
+  assign i_derot_pre = mult_Icos + mult_Qsin;
+  assign q_derot_pre = mult_Qcos - mult_Isin;
+
+  // delay sym val DSP delay 4clk/CEs
+  localparam DSP_DELAY = 4;
+  logic [DSP_DELAY-1:0] sym_val_sr = '0;
+  logic sym_valid_pre = 0;
+
+  always_ff @(posedge clk) begin 
+    if (sym_valid_in) sym_val_sr <= {sym_val_sr[DSP_DELAY-2:0],sym_valid_in};//4 DSP CEs delay 
+    if (&sym_val_sr[DSP_DELAY-2:0])  sym_valid_pre <= sym_valid_in; // "DSP_DELAY-2" : ready ON THE 4TH CE + 1clk delay
   end
 
-  // pass‑through (no added latency)
-  assign sym_valid_out = sym_valid_in;
+  // outputs
+  assign sym_valid_out = sym_valid_pre;
+  assign dout_i = i_derot_pre[30:15];
+  assign dout_q = q_derot_pre[30:15];
+
 
 endmodule
 

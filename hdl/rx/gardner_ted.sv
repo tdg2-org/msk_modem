@@ -64,7 +64,8 @@ module gardner_ted #
 
   logic signed [47:0] dsp_I_prod, dsp_Q_prod, iq_sum, err_long;
 
-  dsp_macro_AxBmC dsp_I ( // dsp_mix
+  //dsp_mix. sel = 0; A*B-C, sel = 1: A*B+C
+  dsp_mix dsp_I ( // dsp_mix
     .CLK  (clk        ),
     .CE   (iq_val     ),
     .SEL  ('1         ),  // A*B+C 
@@ -74,7 +75,7 @@ module gardner_ted #
     .P    (dsp_I_prod)  // out [47:0]
   );
 
-  dsp_macro_AxBmC dsp_Q ( // dsp_mix
+  dsp_mix dsp_Q ( // dsp_mix
     .CLK  (clk        ),
     .CE   (iq_val     ),
     .SEL  ('1         ),  // A*B+C 

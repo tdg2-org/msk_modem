@@ -301,30 +301,30 @@ module msk_tb_xlnx_RX;
   );
 
 
-  msk_slicer_dec_mdl #(
-    .IW (PIW)
-  ) msk_slicer_dec_MDL_TIMING (
-    .clk          (clk          ),
-    .reset_n      (reset_n      ),
-    .i_sym_i      (i_sym_interp ),
-    .q_sym_i      (q_sym_interp ),
-    .sym_valid_i  (sym_val_interp  ),
-    .data_o       (data_TIMING     ),
-    .data_valid_o (data_val_TIMING )
-  );
-
+//  msk_slicer_dec_mdl #(
+//    .IW (PIW)
+//  ) msk_slicer_dec_MDL_TIMING (
+//    .clk          (clk          ),
+//    .reset_n      (reset_n      ),
+//    .i_sym_i      (i_sym_interp ),
+//    .q_sym_i      (q_sym_interp ),
+//    .sym_valid_i  (sym_val_interp  ),
+//    .data_o       (data_TIMING     ),
+//    .data_valid_o (data_val_TIMING )
+//  );
+//
   localparam shifterWid = 128;
-
-  shifter_viewer # (
-    .FDW(FDW),
-    .FIXED_DATA(FIXED_DATA),
-    .WIDTH(shifterWid)
-  ) shifter_viewer_TIMING (
-    .clk        (clk),
-    .rst        (!reset_n),
-    .data_i     (data_TIMING),
-    .data_val_i (data_val_TIMING)
-  );
+//
+//  shifter_viewer # (
+//    .FDW(FDW),
+//    .FIXED_DATA(FIXED_DATA),
+//    .WIDTH(shifterWid)
+//  ) shifter_viewer_TIMING (
+//    .clk        (clk),
+//    .rst        (!reset_n),
+//    .data_i     (data_TIMING),
+//    .data_val_i (data_val_TIMING)
+//  );
 
 
 //-------------------------------------------------------------------------------------------------
@@ -365,21 +365,38 @@ module msk_tb_xlnx_RX;
   logic signed [DDSW-1:0] dds_sin, dds_cos;
 
 
-  derotator_mdl #(
+// derotator_mdl #(
+//   .WIDTH        (DIW),
+//   .DDS_WIDTH    (DDSW),
+//   .PHASE_WIDTH  (PW)
+// ) derotator_MDL (
+//   .clk            (clk),
+//   .rst            (rst),            
+//   .sym_valid_in   (sym_val_interp && cfo_en), 
+//   .din_i          (i_sym_interp),
+//   .din_q          (q_sym_interp),
+//   .cos_in         (dds_cos),
+//   .sin_in         (dds_sin),
+//   .sym_valid_out  (),  
+//   .dout_i         (),
+//   .dout_q         ()
+// );
+
+  derotator #(
     .WIDTH        (DIW),
     .DDS_WIDTH    (DDSW),
     .PHASE_WIDTH  (PW)
-  ) derotator_MDL (
+  ) derotator_SYN (
     .clk            (clk),
     .rst            (rst),            
     .sym_valid_in   (sym_val_interp && cfo_en), 
-    .din_i          (i_sym_interp),
-    .din_q          (q_sym_interp),
-    .cos_in         (dds_cos),
-    .sin_in         (dds_sin),
-    .sym_valid_out  (derot_val),  
-    .dout_i         (derot_i),
-    .dout_q         (derot_q)
+    .din_i          (i_sym_interp ),
+    .din_q          (q_sym_interp ),
+    .cos_in         (dds_cos      ),
+    .sin_in         (dds_sin      ),
+    .sym_valid_out  (derot_val    ),  
+    .dout_i         (derot_i      ),
+    .dout_q         (derot_q      )
   );
 
   localparam EW = 24;

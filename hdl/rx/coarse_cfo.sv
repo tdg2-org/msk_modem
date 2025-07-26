@@ -10,14 +10,14 @@ module coarse_cfo #(
   parameter int  AVG_LEN        = 128,         // # symbols to average (power‑of‑2 preferred)
   parameter int  IQ_WIDTH       = 16           // Q1.(IQ_WIDTH‑1) fixed‑point
 )(
-  input  logic                     clk,
-  input  logic                     rst_n,
-  input  logic                     enable,     // high during acquisition
-  input  logic                     vld_in,     // one strobe per symbol
-  input  logic signed [IQ_WIDTH-1:0] i_in,     // timing‑loop I sample
-  input  logic signed [IQ_WIDTH-1:0] q_in,     // timing‑loop Q sample
-  output logic signed [PHASE_ACC_BITS-1:0] freq_word, // coarse word for NCO
-  output logic                     done        // 1‑clk pulse when estimate valid
+  input  logic                              clk,
+  input  logic                              rst_n,
+  input  logic                              enable,     // high during acquisition
+  input  logic                              vld_in,     // one strobe per symbol
+  input  logic signed [IQ_WIDTH-1:0]        i_in,     // timing‑loop I sample
+  input  logic signed [IQ_WIDTH-1:0]        q_in,     // timing‑loop Q sample
+  output logic signed [PHASE_ACC_BITS-1:0]  freq_word, // coarse word for NCO
+  output logic                              done        // 1‑clk pulse when estimate valid
 );
 
   // --------------------------------------------------------------------------
