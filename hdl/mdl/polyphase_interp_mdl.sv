@@ -104,16 +104,17 @@ polyphase_interp_mdl #(
   .WIQ       (16),
   .WO        (18)
 ) polyphase_interp_inst (
-  .clk           (),
-  .rst           (),
-  .i_raw_i       (),
-  .q_raw_i       (),
-  .phase_int_i   (),
-  .mu_i          (),
-  .sym_valid_i   (),
-  .i_sym_o       (),
-  .q_sym_o       (),
-  .sym_valid_o   ()
+  .clk          (),
+  .rst          (),
+  .i_raw_i      (),
+  .q_raw_i      (),
+  .phase_int_i  (),
+  .mu_i         (),
+  .phase_val_i  (),
+  .sym_valid_i  (),
+  .i_sym_o      (),
+  .q_sym_o      (),
+  .sym_valid_o  ()
 );
 
 */

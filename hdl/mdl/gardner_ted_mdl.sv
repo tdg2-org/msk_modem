@@ -72,13 +72,13 @@ module gardner_ted_mdl #
   //assign err = ((Ih * dI) + (Qh * dQ)) >>> (SHIFT);
 
   (* keep = "true" *) logic signed [2*WI+1:0] err_long, multI, multQ, err_long2,err_long3, mQd, mId;
-  assign multI = (Ih * dI);
-  assign multQ = (Qh * dQ);
-  array_shift_delay_simple # (.LEN(4),.DW(34)) array_shift_delay_simpleI (clk,multI,mId);
-  array_shift_delay_simple # (.LEN(4),.DW(34)) array_shift_delay_simpleQ (clk,multQ,mQd);  
-  assign err_long2 = (mId + mQd);
-  assign err_long3 = err_long2 >>> SHIFT;
-  assign err3 = err_long3[2*WI+1:16];
+  assign multI = (Ih * dI);//debug
+  assign multQ = (Qh * dQ);//debug
+  array_shift_delay_simple # (.LEN(4),.DW(34)) array_shift_delay_simpleI (clk,multI,mId);//debug
+  array_shift_delay_simple # (.LEN(4),.DW(34)) array_shift_delay_simpleQ (clk,multQ,mQd);//debug  
+  assign err_long2 = (mId + mQd);//debug
+  assign err_long3 = err_long2 >>> SHIFT;//debug
+  assign err3 = err_long3[2*WI+1:16];//debug
 
   assign err_long = ((Ih * dI) + (Qh * dQ)) >>> (SHIFT);
   assign err = err_long[2*WI+1:16];

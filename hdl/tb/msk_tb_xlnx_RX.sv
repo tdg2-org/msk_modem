@@ -260,12 +260,32 @@ module msk_tb_xlnx_RX;
   localparam PIW = 16;
   logic signed [PIW-1:0] i_sym_interp, q_sym_interp;
 
-  polyphase_interp_mdl #(
+//  polyphase_interp_mdl #(
+//    .OSF       (20),
+//    .TAPS_PPH  (INT_W ),
+//    .WIQ       (WIQ),
+//    .WO        (PIW)
+//  ) polyphase_interp_MDL (
+//    .clk          (clk            ),
+//    .rst          (rst            ),
+//    .i_raw_i      (i_raw_delay    ),
+//    .q_raw_i      (q_raw_delay    ),
+//    .iq_raw_val_i (iq_val         ), 
+//    .phase_int_i  (phase_int      ),
+//    .mu_i         (mu             ),
+//    .phase_val_i  (phase_val      ),
+//    .sym_valid_i  (sym_val        ),
+//    .i_sym_o      (),
+//    .q_sym_o      (),
+//    .sym_valid_o  ()
+//  );
+
+  polyphase_interp #(
     .OSF       (20),
     .TAPS_PPH  (INT_W ),
     .WIQ       (WIQ),
     .WO        (PIW)
-  ) polyphase_interp_MDL (
+  ) polyphase_interp_SYN (
     .clk          (clk            ),
     .rst          (rst            ),
     .i_raw_i      (i_raw_delay    ),
@@ -279,6 +299,7 @@ module msk_tb_xlnx_RX;
     .q_sym_o      (q_sym_interp   ),
     .sym_valid_o  (sym_val_interp )
   );
+
 
   msk_slicer_dec_mdl #(
     .IW (PIW)
