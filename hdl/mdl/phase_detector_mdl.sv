@@ -20,6 +20,9 @@ module phase_detector_mdl #(
   output logic signed [EW-1:0]  phase_err
 );
 
+  logic                  err_valid_pre;
+  logic signed [EW-1:0]  phase_err_pre;
+
   //--- constants for int⇄real scaling ------------------------
   localparam real IQ_SCALE   =  1.0 / (1 << (IW-1));  // int → real  (≈ ±1.0)
   localparam real ERR_ISCALE =  (1 << (EW-2));    // real → Q2.(EW-2)
@@ -35,11 +38,11 @@ module phase_detector_mdl #(
     if (rst) begin
       prev_i    <= 0.0;
       prev_q    <= 0.0;
-      phase_err <= '0;
-      err_valid <= 1'b0;
+      phase_err_pre <= '0;
+      err_valid_pre <= 1'b0;
     end else begin
       // default: not valid unless we assert below
-      err_valid <= 1'b0;
+      err_valid_pre <= 1'b0;
 
       if (sym_valid) begin
         // convert current int samples → real
@@ -53,10 +56,10 @@ module phase_detector_mdl #(
         err_i  = $rtoi(err_r * ERR_ISCALE);
         if (err_i >  ERR_MAX) err_i = ERR_MAX;
         if (err_i <  ERR_MIN) err_i = ERR_MIN;
-        phase_err   <= err_i;
+        phase_err_pre   <= err_i;
 
         // update valid flag
-        err_valid   <= 1'b1;
+        err_valid_pre   <= 1'b1;
 
         // pipeline previous symbol for next error calc
         prev_i      <= curr_i;
@@ -64,6 +67,30 @@ module phase_detector_mdl #(
       end
     end
   end
+
+  //assign err_valid = err_valid_pre;  
+  //assign phase_err = phase_err_pre;
+
+//-------------------------------------------------------------------------------------------------
+// delay to match synth version
+//-------------------------------------------------------------------------------------------------
+
+  // delay sym val DSP delay 4clk/CEs
+  localparam DSP_DELAY = 4;
+  logic [DSP_DELAY-1:0] sym_val_sr = '0;
+  logic sym_valid_pre = 0;
+  logic signed [EW-1:0]  phase_err_pre_delay [DSP_DELAY-1:0];
+
+  always_ff @(posedge clk) begin 
+    if (sym_valid) sym_val_sr <= {sym_val_sr[DSP_DELAY-2:0],sym_valid};//4 DSP CEs delay 
+    if (sym_valid) phase_err_pre_delay <= {phase_err_pre_delay[DSP_DELAY-2:0],phase_err_pre};//4 DSP CEs delay 
+    if (&sym_val_sr[DSP_DELAY-2:0])  sym_valid_pre <= sym_valid; // "DSP_DELAY-2" : ready ON THE 4TH CE + 1clk delay
+  end
+
+
+  assign err_valid = sym_valid_pre;  
+  assign phase_err = phase_err_pre_delay[2];
+
 
 endmodule
 

@@ -20,50 +20,59 @@ module phase_detector #(
   output logic signed [EW-1:0]  phase_err
 );
 
-  //--- constants for int⇄real scaling ------------------------
-  localparam real IQ_SCALE   =  1.0 / (1 << (IW-1));  // int → real  (≈ ±1.0)
-  localparam real ERR_ISCALE =  (1 << (EW-2));    // real → Q2.(EW-2)
-  localparam int  ERR_MAX    =  (1 << (EW-1)) - 1;
-  localparam int  ERR_MIN    = -(1 << (EW-1));
+  localparam int DSP_IWID = 18;
+  localparam int DSP_OWID = 48;
+  logic signed [DSP_IWID-1:0] dspI,dspQ,dspI_delay,dspQ_delay;
+  logic signed [DSP_OWID:0]   dsp_I_Qdelay, dsp_Q_Idelay, err;
+  logic signed [IW-1:0] i_delay=0, q_delay=0;
 
-  //--- pipeline registers for previous symbol ----------------
-  real prev_i, prev_q, curr_i, curr_q, err_r;
-  int  err_i;
-
-  //--- main logic --------------------------------------------
   always_ff @(posedge clk) begin
-    if (rst) begin
-      prev_i    <= 0.0;
-      prev_q    <= 0.0;
-      phase_err <= '0;
-      err_valid <= 1'b0;
-    end else begin
-      // default: not valid unless we assert below
-      err_valid <= 1'b0;
-
-      if (sym_valid) begin
-        // convert current int samples → real
-        curr_i = $itor(din_i) * IQ_SCALE;
-        curr_q = $itor(din_q) * IQ_SCALE;
-
-        // decision-directed error: e = I·Q_prev - Q·I_prev
-        err_r  = curr_i * prev_q - curr_q * prev_i;
-
-        // scale to fixed-point and saturate
-        err_i  = $rtoi(err_r * ERR_ISCALE);
-        if (err_i >  ERR_MAX) err_i = ERR_MAX;
-        if (err_i <  ERR_MIN) err_i = ERR_MIN;
-        phase_err   <= err_i;
-
-        // update valid flag
-        err_valid   <= 1'b1;
-
-        // pipeline previous symbol for next error calc
-        prev_i      <= curr_i;
-        prev_q      <= curr_q;
-      end
+    if (sym_valid) begin 
+      i_delay <= din_i;
+      q_delay <= din_q;
     end
   end
+
+  assign dspI       = signed'(din_i   );
+  assign dspQ       = signed'(din_q   );
+  assign dspI_delay = signed'(i_delay );
+  assign dspQ_delay = signed'(q_delay );
+
+  //dsp_mix. sel = 0: A*B-C, sel = 1: A*B+C
+  dsp_mix dsp_I_Qd ( // dsp_mix
+    .CLK  (clk          ),
+    .CE   (sym_valid    ),
+    .SEL  ('1           ),  // A*B+C 
+    .A    (dspI         ), // in [17:0]
+    .B    (dspQ_delay   ), // in [17:0]
+    .C    ('0           ), // in [17:0]
+    .P    (dsp_I_Qdelay )  // out [47:0]
+  );
+
+  dsp_mix dsp_Q_Id ( // dsp_mix
+    .CLK  (clk          ),
+    .CE   (sym_valid    ),
+    .SEL  ('1           ),  // A*B+C 
+    .A    (dspQ         ), // in [17:0]
+    .B    (dspI_delay   ), // in [17:0]
+    .C    ('0           ), // in [17:0]
+    .P    (dsp_Q_Idelay )  // out [47:0]
+  );
+
+  assign err = dsp_I_Qdelay - dsp_Q_Idelay;
+
+  // delay sym val DSP delay 4clk/CEs
+  localparam DSP_DELAY = 4;
+  logic [DSP_DELAY-1:0] sym_val_sr = '0;
+  logic sym_valid_pre = 0;
+
+  always_ff @(posedge clk) begin 
+    if (sym_valid) sym_val_sr <= {sym_val_sr[DSP_DELAY-2:0],sym_valid};//4 DSP CEs delay 
+    if (&sym_val_sr[DSP_DELAY-2:0])  sym_valid_pre <= sym_valid; // "DSP_DELAY-2" : ready ON THE 4TH CE + 1clk delay
+  end
+
+  assign phase_err = err[31:8];
+  assign err_valid = sym_valid_pre;
 
 endmodule
 
@@ -76,6 +85,7 @@ endmodule
     .clk        (clk),
     .rst        (rst),
     .sym_valid  (),
+    
     .din_i      (),
     .din_q      (),
     .err_valid  (),

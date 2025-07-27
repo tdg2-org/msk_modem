@@ -415,6 +415,19 @@ module msk_tb_xlnx_RX;
     .phase_err  (pdet_err)
   );
 
+  phase_detector #(
+    .IW (DIW), 
+    .EW (EW)  
+  ) phase_detector_SYN (
+    .clk        (clk),
+    .rst        (rst),
+    .sym_valid  (derot_val && cfo_en),
+    .din_i      (derot_i),
+    .din_q      (derot_q),
+    .err_valid  (),
+    .phase_err  ()
+  );
+
   logic signed [PW-1:0] freq_word;
 
   loop_filter_cfo_mdl #(
