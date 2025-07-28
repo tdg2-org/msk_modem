@@ -402,18 +402,18 @@ module msk_tb_xlnx_RX;
   localparam EW = 24;
   logic signed [EW-1:0] pdet_err;
 
-  phase_detector_mdl #(
-    .IW (DIW), 
-    .EW (EW)  
-  ) phase_detector_MDL (
-    .clk        (clk),
-    .rst        (rst),
-    .sym_valid  (derot_val && cfo_en),
-    .din_i      (derot_i),
-    .din_q      (derot_q),
-    .err_valid  (pdet_err_val),
-    .phase_err  (pdet_err)
-  );
+//  phase_detector_mdl #(
+//    .IW (DIW), 
+//    .EW (EW)  
+//  ) phase_detector_MDL (
+//    .clk        (clk),
+//    .rst        (rst),
+//    .sym_valid  (derot_val && cfo_en),
+//    .din_i      (derot_i),
+//    .din_q      (derot_q),
+//    .err_valid  (),
+//    .phase_err  ()
+//  );
 
   phase_detector #(
     .IW (DIW), 
@@ -424,25 +424,44 @@ module msk_tb_xlnx_RX;
     .sym_valid  (derot_val && cfo_en),
     .din_i      (derot_i),
     .din_q      (derot_q),
-    .err_valid  (),
-    .phase_err  ()
+    .err_valid  (pdet_err_val),
+    .phase_err  (pdet_err)
   );
 
   logic signed [PW-1:0] freq_word;
 
-  loop_filter_cfo_mdl #(
-    .ERR_WIDTH      (EW), 
-    .PHASE_WIDTH    (PW), 
-    .KP             (1.2e-6), 
-    .KI             (5.0e-8)  
-  ) loop_filter_cfo_MDL (
-    .clk            (clk),
-    .rst            (rst),
-    .err_valid_i    (pdet_err_val),   
-    .phase_err_i    (pdet_err),   // phase detect
-    .freq_valid_o   (freq_word_val),   
-    .freq_word_o    (freq_word)    
+//  loop_filter_cfo_mdl #(
+//    .ERR_WIDTH      (EW), 
+//    .PHASE_WIDTH    (PW), 
+//    .KP             (1.2e-6), 
+//    .KI             (5.0e-8)  
+//  ) loop_filter_cfo_MDL (
+//    .clk            (clk),
+//    .rst            (rst),
+//    .err_valid_i    (pdet_err_val),   
+//    .phase_err_i    (pdet_err),   // phase detect
+//    .freq_valid_o   (),   
+//    .freq_word_o    ()    
+//  );
+
+
+  loop_filter_cfo #(
+    .ERR_WIDTH   (EW ), 
+    .PHASE_WIDTH (PW ), 
+    .KP_SHIFT    (22 ), 
+    .KI_SHIFT    (22 ),
+    .KP_COEFF    (322), 
+    .KI_COEFF    (55 )  
+  ) loop_filter_cfo_SYN (
+    .clk          (clk),
+    .rst          (rst),
+    .err_valid_i  (pdet_err_val),
+    .phase_err_i  (pdet_err),
+    .freq_valid_o (freq_word_val),
+    .freq_word_o  (freq_word    )
   );
+
+
 
   nco_dds_mdl #(
     .PHASE_WIDTH  (PW),

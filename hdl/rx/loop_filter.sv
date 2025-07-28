@@ -86,7 +86,7 @@ endmodule
 
 /* instantiation template ------------------------------------------------------
 
-pi_loop_filter_mdl_2 #(
+pi_loop_filter #(
   .WERR      (18),
   .KP_SHIFT  (7 ),
   .KI_SHIFT  (12),
