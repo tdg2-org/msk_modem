@@ -471,9 +471,23 @@ module msk_tb_xlnx_RX;
     .rst          (rst),
     .freq_word_i  (freq_word),   // from loop filter
     .phase_word_o (),   // n/c for debug/view
-    .cos_out      (dds_cos),// do derotator
-    .sin_out      (dds_sin)    
+    .cos_out      (),// do derotator
+    .sin_out      ()    
   );
+
+  nco_dds #(
+    .PHASE_WIDTH  (32),
+    .AMP_WIDTH    (16) 
+  ) nco_dds (
+    .clk              (clk),
+    .rst              (rst),
+    .freq_word_i      (freq_word), 
+    .freq_word_val_i  (freq_word_val),
+    .phase_word_o     (),   
+    .cos_out          (dds_cos),   
+    .sin_out          (dds_sin)    
+  );
+
 
 //-------------------------------------------------------------------------------------------------
 // carrier recovery
