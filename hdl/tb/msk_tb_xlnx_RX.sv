@@ -463,17 +463,17 @@ module msk_tb_xlnx_RX;
 
 
 
-  nco_dds_mdl #(
-    .PHASE_WIDTH  (PW),
-    .AMP_WIDTH    (DDSW) 
-  ) nco_dds_MDL (
-    .clk          (clk),
-    .rst          (rst),
-    .freq_word_i  (freq_word),   // from loop filter
-    .phase_word_o (),   // n/c for debug/view
-    .cos_out      (),// do derotator
-    .sin_out      ()    
-  );
+//  nco_dds_mdl #(
+//    .PHASE_WIDTH  (PW),
+//    .AMP_WIDTH    (DDSW) 
+//  ) nco_dds_MDL (
+//    .clk          (clk),
+//    .rst          (rst),
+//    .freq_word_i  (freq_word),   // from loop filter
+//    .phase_word_o (),   // n/c for debug/view
+//    .cos_out      (),// do derotator
+//    .sin_out      ()    
+//  );
 
   nco_dds #(
     .PHASE_WIDTH  (32),
@@ -519,6 +519,31 @@ module msk_tb_xlnx_RX;
     .data_i     (data_CFO),
     .data_val_i (data_val_CFO)
   );
+
+
+  msk_slicer_dec #(
+    .IW (PIW)
+  ) msk_slicer_dec_SYN(
+    .clk          (clk          ),
+    .reset_n      (reset_n      ),
+    .i_sym_i      (derot_i      ),
+    .q_sym_i      (derot_q      ),
+    .sym_valid_i  (derot_val    ),
+    .data_o       (data_SYN     ),
+    .data_valid_o (data_val_SYN )
+  );
+
+  shifter_viewer # (
+    .FDW(FDW),
+    .FIXED_DATA(FIXED_DATA),
+    .WIDTH(shifterWid)
+  ) shifter_viewer_SYN (
+    .clk        (clk),
+    .rst        (!reset_n),
+    .data_i     (data_SYN),
+    .data_val_i (data_val_SYN)
+  );
+
 
 //-------------------------------------------------------------------------------------------------
 // debug

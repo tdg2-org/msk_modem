@@ -51,7 +51,7 @@ module msk_slicer_dec_mdl #
   //   imag = q_in * I_prev - i_in * Q_prev
 
   logic signed [2*IW:0] imag_diff, IxQP, QxIP;
-  logic data;
+  logic data=0, data_pre=0, data_valid_pre=0;
 
   //assign IxQP = i_sym_i * Q_prev;
   //assign QxIP = q_sym_i * I_prev;
@@ -65,12 +65,31 @@ module msk_slicer_dec_mdl #
       QxIP          = q_sym_i * I_prev;
       imag_diff     = QxIP - IxQP;
       data          = (imag_diff >= 0) ? 1:0;
-      data_o        <= data;
-      data_valid_o  <= '1;
+      data_pre        <= data;
+      data_valid_pre  <= '1;
     end else begin 
-      data_valid_o <= '0;
+      data_valid_pre <= '0;
     end 
   end
+
+
+
+//-------------------------------------------------------------------------------------------------
+// delay to match synth
+//-------------------------------------------------------------------------------------------------
+  localparam DSP_DELAY = 4;
+  logic [DSP_DELAY-1:0] data_sr= '0, data_val_sr = '0;
+
+  always_ff @(posedge clk) begin 
+    if (data_valid_pre) begin 
+      data_sr <= {data_sr[DSP_DELAY-2:0], data_pre};
+      data_val_sr <= {data_val_sr[DSP_DELAY-2:0], data_valid_pre};
+    end
+    if (&data_val_sr[DSP_DELAY-2:0])  data_valid_o <= data_valid_pre; // "DSP_DELAY-2" : ready ON THE 4TH CE + 1clk delay
+  end 
+
+  assign data_o = data_sr[DSP_DELAY-1];
+      
 
 endmodule
 

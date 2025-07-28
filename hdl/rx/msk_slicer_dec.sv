@@ -1,17 +1,11 @@
 `timescale 1ns / 1ps  // <time_unit>/<time_precision>
 
-// -----------------------------------------------------------------------------
-// Non-synthesizable MSK differential slicer / decoder
-//   • Input stream is one complex sample per symbol from the interpolator
-//   • No carrier loop, no matched filter → use SIGN of Imag{Sₖ·conj(Sₖ₋₁)}
-//   • Produces a hard bit and a 1-cycle data_valid_o pulse
-//   • Zero multipliers inferred in simulation; just $signed * for clarity
-// -----------------------------------------------------------------------------
+
+
 module msk_slicer_dec #
 (
   parameter int IW = 18   // width of I/Q symbol samples
-)
-(
+)(
   input  logic                      clk,
   input  logic                      reset_n,
 
@@ -25,63 +19,83 @@ module msk_slicer_dec #
   output logic                      data_valid_o
 );
 
-  // ----------------------------------------------------------------------------
-  // 1. store previous symbol (only when sym_valid_i)
-  // ----------------------------------------------------------------------------
+//  imag = q_in * I_prev - i_in * Q_prev
+//  data_out = (imag_diff >= 0) ? 1:0;
+
   logic                  prev_valid;
-  logic signed [IW-1:0]  I_prev, Q_prev;
+  logic signed [IW-1:0]  I_prev=0, Q_prev=0;
 
   always_ff @(posedge clk) begin
-    if (!reset_n) begin
-      I_prev     <= '0;
-      Q_prev     <= '0;
-      prev_valid <= 1'b0;
-    end
-    else if (sym_valid_i) begin
+    prev_valid <= '0;
+    if (sym_valid_i) begin
       I_prev     <= i_sym_i;
       Q_prev     <= q_sym_i;
       prev_valid <= 1'b1;     // becomes valid after first symbol
     end
   end
 
-  // ----------------------------------------------------------------------------
-  // 2. differential phase detector & slicer
-  //    imag{S_k · conj(S_k-1)}  =  Q_k·I_{k-1}  −  I_k·Q_{k-1}
-  // ----------------------------------------------------------------------------
-  //   imag = q_in * I_prev - i_in * Q_prev
 
-  logic signed [2*IW:0] imag_diff, IxQP, QxIP;
-  logic data;
+  localparam int DSP_IWID = 18;
+  localparam int DSP_OWID = 48;
+  logic signed [DSP_IWID-1:0] dspI,dspQ,dspI_delay,dspQ_delay;
+  logic signed [DSP_OWID:0]   IxQP, QxIP, imag_diff;
 
-  //assign IxQP = i_sym_i * Q_prev;
-  //assign QxIP = q_sym_i * I_prev;
-  //assign imag_diff = QxIP - IxQP;
-  //assign data = (imag_diff >= 0) ? 1:0;
+  assign dspI       = signed'(i_sym_i );
+  assign dspQ       = signed'(q_sym_i );
+  assign dspI_delay = signed'(I_prev  );
+  assign dspQ_delay = signed'(Q_prev  );
 
 
-  always_ff @(posedge clk) begin
-    if (sym_valid_i) begin
-      IxQP          = i_sym_i * Q_prev;
-      QxIP          = q_sym_i * I_prev;
-      imag_diff     = QxIP - IxQP;
-      data          = (imag_diff >= 0) ? 1:0;
-      data_o        <= data;
-      data_valid_o  <= '1;
-    end else begin 
-      data_valid_o <= '0;
-    end 
+  //dsp_mix. sel = 0: A*B-C, sel = 1: A*B+C
+  dsp_mix dsp_IxQP ( // dsp_mix
+    .CLK  (clk          ),
+    .CE   (sym_valid_i  ),
+    .SEL  ('1           ),  // A*B+C 
+    .A    (dspI         ),  // in [17:0]
+    .B    (dspQ_delay   ),  // in [17:0]
+    .C    ('0           ),  // in [17:0]
+    .P    (IxQP         )   // out [47:0]
+  );
+
+  dsp_mix dsp_QxIP ( // dsp_mix
+    .CLK  (clk          ),
+    .CE   (sym_valid_i  ),
+    .SEL  ('1           ),  // A*B+C 
+    .A    (dspQ         ),  // in [17:0]
+    .B    (dspI_delay   ),  // in [17:0]
+    .C    ('0           ),  // in [17:0]
+    .P    (QxIP         )   // out [47:0]
+  );
+
+  logic data_pre;
+
+  assign imag_diff = QxIP - IxQP;
+  assign data_pre = (imag_diff >= 0) ? 1:0;
+
+
+  // delay sym val DSP delay 4clk/CEs
+  localparam DSP_DELAY = 4;
+  logic [DSP_DELAY-1:0] sym_val_sr = '0;
+  logic sym_valid_pre = 0;
+
+  always_ff @(posedge clk) begin 
+    if (sym_valid_i) sym_val_sr <= {sym_val_sr[DSP_DELAY-2:0],sym_valid_i};//4 DSP CEs delay 
+    if (&sym_val_sr[DSP_DELAY-2:0])  sym_valid_pre <= sym_valid_i; // "DSP_DELAY-2" : ready ON THE 4TH CE + 1clk delay  
+  end
+
+  always_ff @(posedge clk) begin 
+    data_o       <= data_pre;
+    data_valid_o <= sym_valid_pre;
   end
 
 endmodule
 
-//   imag = q_in * I_prev - i_in * Q_prev
-//  data_out = (imag_diff >= 0) ? 1:0;
 
 /* instantiation template ------------------------------------------------------
 
-msk_slicer_dec_mdl #(
+msk_slicer_dec #(
   .IW (18)
-) msk_slicer_dec_inst (
+) msk_slicer_dec (
   .clk          (),
   .reset_n      (),
   .i_sym_i      (),
