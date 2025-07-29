@@ -31,11 +31,11 @@ module duc_ddc_lpf_top #(
   );
 
 //-------------------------------------------------------------------------------------------------
-// DUC
+// TX DUC
 //-------------------------------------------------------------------------------------------------
 generate if (DUC_EN) begin : DUC
   duc #(
-    .FS(200e6)
+    .FS(FS)
   ) duc_inst (
     .clk      (clk      ),
     .reset    (rst    ),
@@ -49,7 +49,7 @@ end else begin
 end endgenerate
 
 //-------------------------------------------------------------------------------------------------
-// DDC + LPF
+// RX DDC + LPF + MF
 //-------------------------------------------------------------------------------------------------
 generate if (DDC_EN) begin : DDC
 
@@ -58,7 +58,7 @@ generate if (DDC_EN) begin : DDC
 
 
   ddc #(
-    .FS(200e6)
+    .FS(FS)
   ) ddc_inst (
     .clk      (clk      ),
     .reset    (rst    ),
@@ -91,9 +91,36 @@ generate if (DDC_EN) begin : DDC
     .m_axis_data_tdata  (fir_Q_tdata)// output wire [31 : 0] m_axis_data_tdata
   );
 
-  assign I_out  = fir_I_tdata[30:15]; // CAREFUL TO PRESERVE SIGN BIT!!!
-  assign Q_out  = fir_Q_tdata[30:15];
-  assign IQ_val = fir_val;
+//  assign I_out  = fir_I_tdata[30:15]; // CAREFUL TO PRESERVE SIGN BIT!!!
+//  assign Q_out  = fir_Q_tdata[30:15];
+//  assign IQ_val = fir_val;
+
+
+  logic signed [39:0] mf_fullI, mf_fullQ;
+  logic mf_val;
+
+  fir_mf msk_mf_I (
+    .aclk(clk),                              // input wire aclk
+    .s_axis_data_tvalid(fir_val  ),  // input wire s_axis_data_tvalid
+    .s_axis_data_tready(        ),  // output wire s_axis_data_tready
+    .s_axis_data_tdata(fir_I_tdata[30:15]    ),    // input wire [15 : 0] s_axis_data_tdata
+    .m_axis_data_tvalid(mf_val  ),  // output wire m_axis_data_tvalid
+    .m_axis_data_tdata(mf_fullI )    // output wire [39 : 0] m_axis_data_tdata
+  );
+
+  fir_mf msk_mf_Q (
+    .aclk(clk),                              // input wire aclk
+    .s_axis_data_tvalid(fir_val  ),  // input wire s_axis_data_tvalid
+    .s_axis_data_tready(        ),  // output wire s_axis_data_tready
+    .s_axis_data_tdata(fir_Q_tdata[30:15]    ),    // input wire [15 : 0] s_axis_data_tdata
+    .m_axis_data_tvalid(        ),  // output wire m_axis_data_tvalid
+    .m_axis_data_tdata(mf_fullQ )    // output wire [39 : 0] m_axis_data_tdata
+  );
+
+  assign I_out = mf_fullI[34:19];
+  assign Q_out = mf_fullQ[34:19];
+  assign IQ_val = mf_val;
+
 
 end else begin 
   assign I_out  = '0;

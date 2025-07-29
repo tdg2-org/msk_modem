@@ -62,18 +62,18 @@ module msk_tb_xlnx_RX;
   logic signed [IQW-1:0] i_fir, i_mf;
   logic signed [IQW-1:0] q_fir, q_mf;
 
-  ddc_lpf_mdl #(
-    .IF(50e6 ),
-    .FS(200e6) 
-  ) ddc_lpf_MDL (
-    .clk    (clk),
-    .rst    (rst),
-    .adc_in (adc0),
-    .adc_val(adc0_val),
-    .I_out  (),
-    .Q_out  (),
-    .iq_out_val()
-  );
+// ddc_lpf_mdl #(
+//   .IF(50e6 ),
+//   .FS(200e6) 
+// ) ddc_lpf_MDL (
+//   .clk    (clk),
+//   .rst    (rst),
+//   .adc_in (adc0),
+//   .adc_val(adc0_val),
+//   .I_out  (),
+//   .Q_out  (),
+//   .iq_out_val()
+// );
 
   duc_ddc_lpf_top #(
     .DUC_EN(0),
@@ -95,51 +95,51 @@ module msk_tb_xlnx_RX;
   );
 
 
-  msk_mf #(
-    .WI (IQW), .WO (IQW)
-  ) msk_mf_MDL_I (
-    .clk      (clk),
-    .din      (i_fir),
-    .din_val  (iq_val),
-    .dout     (),//i_mf
-    .dout_val ()
-  );
+//  msk_mf #(
+//    .WI (IQW), .WO (IQW)
+//  ) msk_mf_MDL_I (
+//    .clk      (clk),
+//    .din      (i_fir),
+//    .din_val  (iq_val),
+//    .dout     (),//i_mf
+//    .dout_val ()
+//  );
+//
+//  msk_mf #(
+//    .WI (IQW), .WO (IQW)
+//  ) msk_mf_MDL_Q (
+//    .clk      (clk),
+//    .din      (q_fir),
+//    .din_val  (iq_val),
+//    .dout     (),//q_mf
+//    .dout_val ()
+//  );
 
-  msk_mf #(
-    .WI (IQW), .WO (IQW)
-  ) msk_mf_MDL_Q (
-    .clk      (clk),
-    .din      (q_fir),
-    .din_val  (iq_val),
-    .dout     (),//q_mf
-    .dout_val ()
-  );
 
-
-/**** move these MF IPs into duc_ddc_lpf_top ******/
-  logic signed [39:0] mf_fullI, mf_fullQ;
-  logic signed [15:0] mf_I, mf_Q;
-
-  fir_mf msk_mf_I (
-    .aclk(clk),                              // input wire aclk
-    .s_axis_data_tvalid(iq_val  ),  // input wire s_axis_data_tvalid
-    .s_axis_data_tready(        ),  // output wire s_axis_data_tready
-    .s_axis_data_tdata(i_fir    ),    // input wire [15 : 0] s_axis_data_tdata
-    .m_axis_data_tvalid(mf_val  ),  // output wire m_axis_data_tvalid
-    .m_axis_data_tdata(mf_fullI )    // output wire [39 : 0] m_axis_data_tdata
-  );
-
-  fir_mf msk_mf_Q (
-    .aclk(clk),                              // input wire aclk
-    .s_axis_data_tvalid(iq_val  ),  // input wire s_axis_data_tvalid
-    .s_axis_data_tready(        ),  // output wire s_axis_data_tready
-    .s_axis_data_tdata(q_fir    ),    // input wire [15 : 0] s_axis_data_tdata
-    .m_axis_data_tvalid(        ),  // output wire m_axis_data_tvalid
-    .m_axis_data_tdata(mf_fullQ )    // output wire [39 : 0] m_axis_data_tdata
-  );
-
-  assign mf_I = mf_fullI[34:19];
-  assign mf_Q = mf_fullQ[34:19];
+/**** MOVED these MF IPs into duc_ddc_lpf_top ******/
+//  logic signed [39:0] mf_fullI, mf_fullQ;
+//  logic signed [15:0] mf_I, mf_Q;
+//
+//  fir_mf msk_mf_I (
+//    .aclk(clk),                              // input wire aclk
+//    .s_axis_data_tvalid(iq_val  ),  // input wire s_axis_data_tvalid
+//    .s_axis_data_tready(        ),  // output wire s_axis_data_tready
+//    .s_axis_data_tdata(i_fir    ),    // input wire [15 : 0] s_axis_data_tdata
+//    .m_axis_data_tvalid(mf_val  ),  // output wire m_axis_data_tvalid
+//    .m_axis_data_tdata(mf_fullI )    // output wire [39 : 0] m_axis_data_tdata
+//  );
+//
+//  fir_mf msk_mf_Q (
+//    .aclk(clk),                              // input wire aclk
+//    .s_axis_data_tvalid(iq_val  ),  // input wire s_axis_data_tvalid
+//    .s_axis_data_tready(        ),  // output wire s_axis_data_tready
+//    .s_axis_data_tdata(q_fir    ),    // input wire [15 : 0] s_axis_data_tdata
+//    .m_axis_data_tvalid(        ),  // output wire m_axis_data_tvalid
+//    .m_axis_data_tdata(mf_fullQ )    // output wire [39 : 0] m_axis_data_tdata
+//  );
+//
+//  assign mf_I = mf_fullI[34:19];
+//  assign mf_Q = mf_fullQ[34:19];
 /*******************************************************/
 
 
@@ -157,23 +157,23 @@ module msk_tb_xlnx_RX;
   logic         [FRAC_W-1:0]  mu;
 
 
-  gardner_ted_mdl #(
-    .RAW_DLY  (5), // adjusted here to 5 to stabilize coarse CFO. need repeat data sequence of "0011" / "00001111" 
-    .OSF      (20),
-    .WI       (16),
-    .WO       (18)
-  ) gardner_ted_MDL (
-    .clk          (clk          ),
-    .reset_n      (reset_n      ),
-    .i_in         (mf_I         ),
-    .q_in         (mf_Q         ),
-    .iq_val       (mf_val       ),
-    .sym_valid_i  (sym_val      ),
-    .e_out_o      (),
-    .e_valid_o    (),
-    .i_raw_delay_o(),
-    .q_raw_delay_o()
-  );
+// gardner_ted_mdl #(
+//   .RAW_DLY  (5), // adjusted here to 5 to stabilize coarse CFO. need repeat data sequence of "0011" / "00001111" 
+//   .OSF      (20),
+//   .WI       (16),
+//   .WO       (18)
+// ) gardner_ted_MDL (
+//   .clk          (clk          ),
+//   .reset_n      (reset_n      ),
+//   .i_in         (mf_I         ),
+//   .q_in         (mf_Q         ),
+//   .iq_val       (mf_val       ),
+//   .sym_valid_i  (sym_val      ),
+//   .e_out_o      (),
+//   .e_valid_o    (),
+//   .i_raw_delay_o(),
+//   .q_raw_delay_o()
+// );
 
   gardner_ted #(
     .RAW_DLY  (5), // adjusted here to 5 to stabilize coarse CFO. need repeat data sequence of "0011" / "00001111" 
@@ -183,9 +183,9 @@ module msk_tb_xlnx_RX;
   ) gardner_ted_SYN (
     .clk          (clk          ),
     .reset_n      (reset_n      ),
-    .i_in         (mf_I         ),
-    .q_in         (mf_Q         ),
-    .iq_val       (mf_val       ),
+    .i_in         (i_fir        ),//mf_I         ),
+    .q_in         (q_fir        ),//mf_Q         ),
+    .iq_val       (iq_val       ),//mf_val       ),
     .sym_valid_i  (sym_val      ),
     .e_out_o      (ek           ),
     .e_valid_o    (ek_val       ),
@@ -548,18 +548,18 @@ module msk_tb_xlnx_RX;
 //-------------------------------------------------------------------------------------------------
 // debug
 //-------------------------------------------------------------------------------------------------
-  logic spy_match,spy_match2;
-
-  always_ff @( posedge clk ) begin
-    //if ((msk_tb_xlnx_RX.gardner_ted_MDL.mId == msk_tb_xlnx_RX.gardner_ted_SYN.dsp_I_prod) && (msk_tb_xlnx_RX.gardner_ted_MDL.mQd == msk_tb_xlnx_RX.gardner_ted_SYN.dsp_Q_prod))
-    //if (msk_tb_xlnx_RX.gardner_ted_MDL.err_long2 == msk_tb_xlnx_RX.gardner_ted_SYN.iq_sum)
-    if (msk_tb_xlnx_RX.gardner_ted_MDL.err_long3 == msk_tb_xlnx_RX.gardner_ted_SYN.err_long)
-      spy_match = '1;
-    else spy_match = '0;
-    if (msk_tb_xlnx_RX.gardner_ted_MDL.err3 == msk_tb_xlnx_RX.gardner_ted_SYN.err)
-      spy_match2 = '1;
-    else spy_match2 = '0;
-  end
+//  logic spy_match,spy_match2;
+//
+//  always_ff @( posedge clk ) begin
+//    //if ((msk_tb_xlnx_RX.gardner_ted_MDL.mId == msk_tb_xlnx_RX.gardner_ted_SYN.dsp_I_prod) && (msk_tb_xlnx_RX.gardner_ted_MDL.mQd == msk_tb_xlnx_RX.gardner_ted_SYN.dsp_Q_prod))
+//    //if (msk_tb_xlnx_RX.gardner_ted_MDL.err_long2 == msk_tb_xlnx_RX.gardner_ted_SYN.iq_sum)
+//    if (msk_tb_xlnx_RX.gardner_ted_MDL.err_long3 == msk_tb_xlnx_RX.gardner_ted_SYN.err_long)
+//      spy_match = '1;
+//    else spy_match = '0;
+//    if (msk_tb_xlnx_RX.gardner_ted_MDL.err3 == msk_tb_xlnx_RX.gardner_ted_SYN.err)
+//      spy_match2 = '1;
+//    else spy_match2 = '0;
+//  end
 
 
 endmodule
